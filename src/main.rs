@@ -8,6 +8,7 @@ mod player;
 
 mod general_components;
 mod systems;
+mod tools;
 
 fn main() {
     
@@ -37,6 +38,8 @@ fn main() {
         .add_startup_system(systems::setup)
 
         .add_system(systems::pause_physics_while_load)
+
+        .add_system(systems::fade_in_out)
 
         //-------------------------------------------------
 

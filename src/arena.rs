@@ -2,17 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use bevy::{prelude::*, render::camera::ScalingMode, window::WindowResized};
+use bevy::{prelude::*, render::camera::ScalingMode};
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use crate::player::Player;
-
-//============================================================================
-
-//Using 16:10 aspect ratio on 15 times scale ((16:10) * 15)
-const GAME_WIDTH: u32 = 240;    //16 * 15
-const GAME_HEIGHT: u32 = 150;   //10 * 15
+use crate::{player::Player, general_components::FadeInOut};
 
 //============================================================================
 
@@ -22,6 +16,13 @@ pub struct Wall;
 pub struct WallBundle {
     wall: Wall,
 }
+
+#[derive(Component)]
+pub struct FogOfWar(pub i32);
+
+//============================================================================
+
+pub struct LevelChangedEvent(pub i32);
 
 //============================================================================
 
@@ -184,6 +185,7 @@ fn change_level(
     ldtk_levels: Res<Assets<LdtkLevel>>,
 
     mut player_query: Query<&Transform, With<Player>>,
+    mut level_changed_event: EventWriter<LevelChangedEvent>,
 ) {
 
     //Iterate over each of the levels in the world
@@ -208,9 +210,7 @@ fn change_level(
 
                     if !current_level.is_match(&0, &ldtk_level.level) {
                         *current_level = LevelSelection::Uid(ldtk_level.level.uid);
-                        //println!("parent = {}", parent.0.id());
-                        //println!("Level changed to level {}", ldtk_level.level.uid);
-                        //println!("Level has entity id {}", level_entity.id());
+                        level_changed_event.send(LevelChangedEvent(ldtk_level.level.uid));
                         return
                     }
                 }
@@ -219,15 +219,149 @@ fn change_level(
     }
 }
 
+fn set_fog_of_war(
+    level_query: Query<(&Handle<LdtkLevel>, &Transform), Without<Player>>,
+    current_level: Res<LevelSelection>,
+    ldtk_levels: Res<Assets<LdtkLevel>>,
+    
+    mut level_changed_event: EventReader<LevelChangedEvent>,
+    mut commands: Commands,
+    fog_query: Query<Entity, With<FogOfWar>>,
+) {
+    for _event in level_changed_event.iter() {
+        
+        for (level_handle, level_transform) in level_query.iter() {
+            if let Some(ldtk_level) = ldtk_levels.get(level_handle) {
+                let level = &ldtk_level.level;
+                if current_level.is_match(&0, &level) {
+
+                    for entity in fog_query.iter() {
+                        commands.entity(entity).insert(FadeInOut {
+                            timer: Timer::from_seconds(0.4, false),
+                            from: 1.,
+                            to: 0.,
+                            remove_on_finish: true,
+                            remove_component_on_finish: true,
+                        });
+                    }
+
+
+                    let level_width = level.px_wid as f32;
+                    let level_height = level.px_hei as f32;
+
+                    let vertical_fog_height = MAX_CAMERA_HEIGHT / 2.;
+
+                    let horizontal_fog_width = MAX_CAMERA_WIDTH / 2.;
+
+
+                    //=========================================================================
+                    //Spawn the top fog
+                    commands.spawn_bundle(SpriteBundle {
+                        sprite: Sprite{
+                            color: Color::rgba(0., 0., 0., 0.),
+                            custom_size: Some(Vec2::new(level_width, vertical_fog_height)),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_xyz(
+                            level_transform.translation.x + level_width / 2., 
+                            level_transform.translation.y + level_height + (vertical_fog_height / 2.),
+                            10.),
+                        ..Default::default()
+                    })
+                    .insert(FogOfWar(level.uid))
+                    .insert(FadeInOut {
+                        timer: Timer::from_seconds(0.1, false),
+                        from: 0.,
+                        to: 1.,
+                        remove_on_finish: false,
+                        remove_component_on_finish: true,
+                    });
+
+                    //=========================================================================
+                    //Spawn the bottom fog
+                    commands.spawn_bundle(SpriteBundle {
+                        sprite: Sprite{
+                            color: Color::rgba(0., 0., 0., 0.),
+                            custom_size: Some(Vec2::new(level_width, vertical_fog_height)),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_xyz(
+                            level_transform.translation.x + level_width / 2., 
+                            level_transform.translation.y - vertical_fog_height / 2.,
+                            10.),
+                        ..Default::default()
+                    })
+                    .insert(FogOfWar(level.uid))
+                    .insert(FadeInOut {
+                        timer: Timer::from_seconds(0.1, false),
+                        from: 0.,
+                        to: 1.,
+                        remove_on_finish: false,
+                        remove_component_on_finish: true,
+                    });
+
+                    //=========================================================================
+                    //Spawn the right fog
+                    commands.spawn_bundle(SpriteBundle {
+                        sprite: Sprite{
+                            color: Color::rgba(0., 0., 0., 0.),
+                            custom_size: Some(Vec2::new(horizontal_fog_width, level_height + vertical_fog_height * 2.)),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_xyz(
+                            level_transform.translation.x + level_width + horizontal_fog_width / 2., 
+                            level_transform.translation.y + level_height / 2.,
+                            10.),
+                        ..Default::default()
+                    })
+                    .insert(FogOfWar(level.uid))
+                    .insert(FadeInOut {
+                        timer: Timer::from_seconds(0.1, false),
+                        from: 0.,
+                        to: 1.,
+                        remove_on_finish: false,
+                        remove_component_on_finish: true,
+                    });
+
+                    //=========================================================================
+                    //Spawn the left fog
+                    commands.spawn_bundle(SpriteBundle {
+                        sprite: Sprite{
+                            color: Color::rgba(0., 0., 0., 0.),
+                            custom_size: Some(Vec2::new(horizontal_fog_width, level_height + vertical_fog_height * 2.)),
+                            ..Default::default()
+                        },
+                        transform: Transform::from_xyz(
+                            level_transform.translation.x - horizontal_fog_width / 2., 
+                            level_transform.translation.y + level_height / 2.,
+                            10.),
+                        ..Default::default()
+                    })
+                    .insert(FogOfWar(level.uid))
+                    .insert(FadeInOut {
+                        timer: Timer::from_seconds(0.1, false),
+                        from: 0.,
+                        to: 1.,
+                        remove_on_finish: false,
+                        remove_component_on_finish: true,
+                    });
+
+
+                    //=========================================================================
+
+                }
+            }
+        }
+    }
+}
+
+//============================================================================
+
 
 const ASPECT_RATIO_WIDTH: f32 = 16.;
 const ASPECT_RATIO_HEIGHT: f32 = 10.;
 
-const ASPECT_RATIO: f32 = ASPECT_RATIO_WIDTH / ASPECT_RATIO_HEIGHT;
-
-
-const MIN_CAMERA_WIDTH: f32 =   ASPECT_RATIO_WIDTH  * 13.;
-const MIN_CAMERA_HEIGHT: f32 =  ASPECT_RATIO_HEIGHT * 13.;
+//const ASPECT_RATIO: f32 = ASPECT_RATIO_WIDTH / ASPECT_RATIO_HEIGHT;
 
 const MAX_CAMERA_WIDTH: f32 = ASPECT_RATIO_WIDTH    * 35.;
 const MAX_CAMERA_HEIGHT: f32 = ASPECT_RATIO_HEIGHT  * 35.;
@@ -258,172 +392,41 @@ fn camera_follow_player(
                     camera_projection.bottom = 0.;
                     camera_projection.right = MAX_CAMERA_WIDTH;
                     camera_projection.top = MAX_CAMERA_HEIGHT;
+                    //With the OrthographicProjection left, right, top bottom in this setup, the 
+                    //camera_transform.translation will be in the bottom left of what you can see.
 
+                    let mut camera_target = Vec2::ZERO;
 
                     let level_height = level.px_hei as f32;
-                    if level_height < MAX_CAMERA_HEIGHT {
-                        camera_transform.translation.y = level_transform.translation.y + (level_height / 2.);
+                    if level_height < MAX_CAMERA_HEIGHT {   //There is less level than there is camera vertically
+                        camera_target.y = level_transform.translation.y + (level_height / 2.) - MAX_CAMERA_HEIGHT / 2.;
                     }
-                    else {
+                    else {  //There is more level than there is camera vertically
                         let level_bottom = level_transform.translation.y;
                         let level_top = level_bottom + level.px_hei as f32 - MAX_CAMERA_HEIGHT;
                         
-                        camera_transform.translation.y = (player_pos.y - MAX_CAMERA_HEIGHT / 2.).clamp(level_bottom, level_top);
+                        camera_target.y = (player_pos.y - MAX_CAMERA_HEIGHT / 2.).clamp(level_bottom, level_top);
                     }
-
                     
                     let level_width = level.px_wid as f32;
-                    if level_width < MAX_CAMERA_WIDTH {
-                        camera_transform.translation.x = level_transform.translation.x + (level_width / 2.);
+                    if level_width < MAX_CAMERA_WIDTH {     //There is less level then their is camera horizontally
+                        camera_target.x = level_transform.translation.x + (level_width / 2.) - MAX_CAMERA_WIDTH / 2.;
                     }
-                    else {
-
+                    else {  //There is move level than their is camera horizontally
                         let level_left = level_transform.translation.x;
                         let level_right = level_left + level.px_wid as f32 - MAX_CAMERA_WIDTH;
 
-                        camera_transform.translation.x = (player_pos.x - MAX_CAMERA_WIDTH / 2.).clamp(level_left, level_right);
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-fn camera_follow_current_level(
-    player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), Without<Player>>,
-    level_query: Query<(&Transform, &Handle<LdtkLevel>), (Without<OrthographicProjection>, Without<Player>)>,
-    current_level: Res<LevelSelection>,
-    ldtk_levels: Res<Assets<LdtkLevel>>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        let player_translation = player_transform.translation;
-        let (mut camera_projection, mut camera_transform) = camera_query.single_mut();
-
-        for (level_transform, level_handle) in level_query.iter() {
-            if let Some(ldtk_level) = ldtk_levels.get(level_handle) {
-                let level = &ldtk_level.level;
-                if current_level.is_match(&0, &level) {
-
-
-                    camera_projection.scaling_mode = ScalingMode::None;
-                    camera_projection.left = 0.;
-                    camera_projection.bottom = 0.;
-
-                    let level_ratio = level.px_wid as f32 / level.px_hei as f32;
-                    if level_ratio > ASPECT_RATIO { //Level is wider than the screen
-
-                        camera_projection.top = (level.px_hei as f32 / ASPECT_RATIO_HEIGHT).round() * ASPECT_RATIO_HEIGHT;
-                        camera_projection.right = camera_projection.top * ASPECT_RATIO;
-                        camera_transform.translation.x = (player_translation.x
-                            - level_transform.translation.x
-                            - camera_projection.right / 2.)
-                            .clamp(0., level.px_wid as f32 - camera_projection.right);
-                        camera_transform.translation.y = 0.;
-
-                    }
-                    else {
-                        //Level is taller than the screen
-                        
-                        camera_projection.right = (level.px_wid as f32 / ASPECT_RATIO_WIDTH).round() * ASPECT_RATIO_WIDTH;
-                        camera_projection.top = camera_projection.right / ASPECT_RATIO;
-                        camera_transform.translation.y = (player_translation.y
-                            - level_transform.translation.y
-                            - camera_projection.top / 2.)
-                            .clamp(0., level.px_hei as f32 - camera_projection.top);
-                        camera_transform.translation.x = 0.;
-
-
+                        camera_target.x = (player_pos.x - MAX_CAMERA_WIDTH / 2.).clamp(level_left, level_right);
                     }
 
-                    //camera_transform.translation.x = player_location.translation.x - camera_projection.right / 2.;
-                    //camera_transform.translation.y = player_location.translation.y - camera_projection.top / 2.;
-
-                    camera_transform.translation.x += level_transform.translation.x;
-                    camera_transform.translation.y += level_transform.translation.y;
-
-
+                    camera_transform.translation.x += (camera_target.x - camera_transform.translation.x) / 20.;
+                    camera_transform.translation.y += (camera_target.y - camera_transform.translation.y) / 20.;
 
                 }
             }
         }
     }
 }
-
-
-
-
-
-
-pub fn camera_fit_inside_current_level(
-    mut camera_query: Query<
-        (
-            &mut bevy::render::camera::OrthographicProjection,
-            &mut Transform,
-        ),
-        Without<Player>,
-    >,
-    player_query: Query<&Transform, With<Player>>,
-    level_query: Query<
-        (&Transform, &Handle<LdtkLevel>),
-        (Without<OrthographicProjection>, Without<Player>),
-    >,
-    level_selection: Res<LevelSelection>,
-    ldtk_levels: Res<Assets<LdtkLevel>>,
-) {
-    if let Ok(Transform {
-        translation: player_translation,
-        ..
-    }) = player_query.get_single()
-    {
-        let player_translation = player_translation.clone();
-
-        let (mut orthographic_projection, mut camera_transform) = camera_query.single_mut();
-
-        for (level_transform, level_handle) in level_query.iter() {
-            if let Some(ldtk_level) = ldtk_levels.get(level_handle) {
-                let level = &ldtk_level.level;
-                if level_selection.is_match(&0, &level) {
-                    let level_ratio = level.px_wid as f32 / ldtk_level.level.px_hei as f32;
-
-                    orthographic_projection.scaling_mode = bevy::render::camera::ScalingMode::None;
-                    orthographic_projection.bottom = 0.;
-                    orthographic_projection.left = 0.;
-                    if level_ratio > ASPECT_RATIO {
-                        // level is wider than the screen
-                        orthographic_projection.top = (level.px_hei as f32 / 9.).round() * 9.;
-                        orthographic_projection.right = orthographic_projection.top * ASPECT_RATIO;
-                        camera_transform.translation.x = (player_translation.x
-                            - level_transform.translation.x
-                            - orthographic_projection.right / 2.)
-                            .clamp(0., level.px_wid as f32 - orthographic_projection.right);
-                        camera_transform.translation.y = 0.;
-                    } else {
-                        // level is taller than the screen
-                        orthographic_projection.right = (level.px_wid as f32 / 16.).round() * 16.;
-                        orthographic_projection.top = orthographic_projection.right / ASPECT_RATIO;
-                        camera_transform.translation.y = (player_translation.y
-                            - level_transform.translation.y
-                            - orthographic_projection.top / 2.)
-                            .clamp(0., level.px_hei as f32 - orthographic_projection.top);
-                        camera_transform.translation.x = 0.;
-                    }
-
-                    camera_transform.translation.x += level_transform.translation.x;
-                    camera_transform.translation.y += level_transform.translation.y;
-
-
-                    println!("Camera Width: {}, Height: {}", orthographic_projection.right, orthographic_projection.top);
-
-
-                }
-            }
-        }
-    }
-}
-
-
 
 
 //============================================================================
@@ -432,12 +435,15 @@ pub struct ArenaPlugin;
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app
+            .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
+            .add_event::<LevelChangedEvent>()
+            
             .register_ldtk_int_cell::<WallBundle>(1)
+
             .add_system(spawn_wall_collision)
             .add_system(change_level)
             .add_system(camera_follow_player)
-            //.add_system(camera_follow_current_level)
-            //.add_system(camera_fit_inside_current_level)
+            .add_system(set_fog_of_war)
         ;
     }
 }

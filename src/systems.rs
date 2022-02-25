@@ -2,6 +2,10 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
+use crate::{general_components::FadeInOut, tools};
+
+//================================================================
+
 pub fn setup(
     mut commands: Commands,
     assets: Res<AssetServer>,
@@ -28,3 +32,37 @@ pub fn pause_physics_while_load(
         }
     }
 }
+
+//================================================================
+
+pub fn fade_in_out(
+    mut query: Query<(Entity, &mut FadeInOut, Option<&mut TextureAtlasSprite>, Option<&mut Sprite>)>,
+    time: Res<Time>,
+    mut commands: Commands,
+) {
+    for (entity, mut fade, atlas_sprite, sprite) in query.iter_mut() {
+
+        fade.timer.tick(time.delta());
+
+        let new_alpha = tools::lerp(fade.from, fade.to, fade.timer.percent());
+
+        if let Some(mut atlas_sprite) = atlas_sprite {
+            atlas_sprite.color.set_a(new_alpha);
+        }
+        if let Some(mut sprite) = sprite {
+            sprite.color.set_a(new_alpha);
+        }
+
+        if fade.timer.finished() {
+            if fade.remove_on_finish {
+                commands.entity(entity).despawn();
+            }
+            else {
+                commands.entity(entity).remove::<FadeInOut>();
+            }
+            continue
+        }
+    }
+}
+
+//================================================================
