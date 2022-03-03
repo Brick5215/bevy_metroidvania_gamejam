@@ -4,26 +4,33 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use crate::general_components::{
-    ColliderBundle, MovementBundle, MaxVelocity, Accel, 
-    MoveDir, CanJump
+use crate::{
+    animation::{SpriteSheetAnimation, AnimationType, Animation}, 
+    physics::{MovementBundle, ColliderBundle, MaxVelocity, MoveDir, Accel, CanJump, IsGrounded, JumpEvent}
 };
 
 //===============================================================
 
+const PLAYER_MAX_SPEED: f32 = 120.;
+const PLAYER_ACCELERATION: f32 = 400.;
+const PLAYER_DEACCELERATION: f32 = 400.;
+const PLAYER_JUMP_FORCE: f32 = 300.;
+
+//===============================================================
 
 #[derive(Component, Default, Clone, Debug)]
 pub struct Player;
 #[derive(Clone, Default, Bundle)]
 pub struct PlayerBundle {
     player: Player,
+    pub worldly: Worldly,
     #[bundle]
     sprite: SpriteSheetBundle,
+    animation: SpriteSheetAnimation,
     #[bundle]
     physics: ColliderBundle,
     #[bundle]
     movement: MovementBundle,
-    pub worldly: Worldly,
 }
 
 //Spawn the player
@@ -41,11 +48,38 @@ impl LdtkEntity for PlayerBundle {
         let idle_texture_atlas = TextureAtlas::from_grid(idle_texture_handle, Vec2::new(32., 32.), 4, 1);
         let idle_texture_atlas_handle = texture_atlases.add(idle_texture_atlas);
 
+        let walk_texture_handle = assets.load("Textures/Alchemist/Mini_Alchemist_Walk.png");
+        let walk_texture_atlas = TextureAtlas::from_grid(walk_texture_handle, Vec2::new(32., 32.), 12, 1);
+        let walk_texture_atlas_handle = texture_atlases.add(walk_texture_atlas);
+
+
+        let mut sprite_sheet_animation = SpriteSheetAnimation::new(
+            AnimationType::Idle,
+            Animation::with_framesteps(
+                idle_texture_atlas_handle.clone(),
+                vec!(0.6, 0.5, 0.8, 0.2),
+                4,
+                true,
+            ),
+            false,
+        );
+        sprite_sheet_animation.add_animation(
+            AnimationType::Walk,
+            Animation::with_fixed_framestep(
+                walk_texture_atlas_handle, 
+                0.1, 
+                12, 
+                true, 
+            )
+        );
+
+
         let width = entity_instance.width as f32;
         let height = entity_instance.height as f32;
 
         Self {
             player: Player,
+            worldly: Worldly::from_entity_info(entity_instance, layer_instance),
             sprite: SpriteSheetBundle {
                 sprite: TextureAtlasSprite {
                     custom_size: Some(Vec2::new(width, height)),
@@ -55,25 +89,32 @@ impl LdtkEntity for PlayerBundle {
                 transform: Transform::from_xyz(0., entity_instance.height as f32 * 2., 2.),
                 ..Default::default()
             },
+            animation: sprite_sheet_animation,
             physics: ColliderBundle::player(width, height),
             movement: MovementBundle {
                 move_dir: MoveDir(0.),
                 max_velocity: MaxVelocity {
-                    x: 200.,
-                    y: 800.,
+                    x: PLAYER_MAX_SPEED,
+                    y: 600.,
                 },
                 acceleration: Accel {
-                    accel: 400.,
-                    deaccel: 400.,
+                    accel: PLAYER_ACCELERATION,
+                    deaccel: PLAYER_DEACCELERATION,
                 },
                 velocity: Velocity::default(),
                 jump: CanJump {
-                    can_jump: true,
-                    jump_force: 200.,
-                    jump_start: false,
+                    //can_jump: true,
+                    jump_force: PLAYER_JUMP_FORCE,
+                    //jump_start: false,
+                    jumps_left: 1,
+                    total_jumps: 1,
+                },
+                grounded: IsGrounded {
+                    grounded: false,
+                    time_since_grounded: 0.,
+                    entities_below: Vec::new(),
                 }
-            },
-            worldly: Worldly::from_entity_info(entity_instance, layer_instance),
+            }
         }
     }
 }
@@ -99,15 +140,16 @@ pub fn player_move(
 }
 
 pub fn player_jump(
-    mut query: Query<&mut CanJump, With<Player>>,
+    mut query: Query<(Entity, &IsGrounded), (With<Player>, With<CanJump>)>,
     key_input: Res<Input<KeyCode>>,
+    mut jump_event: EventWriter<JumpEvent>,
 ) {
 
     let jump_pressed = key_input.just_pressed(KeyCode::Space);
 
-    for mut jump in query.iter_mut() {
-        if jump_pressed && jump.can_jump {
-            jump.jump_start = true;
+    for (entity, grounded) in query.iter_mut() {
+        if jump_pressed && grounded.time_since_grounded < 0.2 {
+            jump_event.send(JumpEvent(entity));
         }
     }
 }
