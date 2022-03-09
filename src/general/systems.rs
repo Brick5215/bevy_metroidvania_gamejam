@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use crate::{general_components::FadeInOut, tools};
+use super::{tools, general_components::FadeInOut};
 
 //================================================================
 

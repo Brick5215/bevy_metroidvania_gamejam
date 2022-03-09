@@ -30,6 +30,19 @@ impl ColliderBundle {
             ..Default::default()
         }
     }
+    pub fn projectile(collider: CollisionShape) -> Self {
+        Self {
+            collider,
+            rigid_body: RigidBody::Sensor,
+            rotation_constraints: RotationConstraints::lock(),
+            physic_material: PhysicMaterial {
+                restitution: 0.,
+                density: 0.,
+                friction: 0.,
+            },
+            ..Default::default()
+        }
+    }
 }
 
 //===============================================================
@@ -162,6 +175,10 @@ fn check_grounded (
     for event in collision_event.iter() {
         match event {
             CollisionEvent::Started(d1, d2) => {
+
+                if d1.normals().len() == 0 {
+                    continue;
+                }
 
                 //println!("d1 normals: {:#?}, d2 normals: {:#?}", d1.normals(), d2.normals());
                 if d1.normals()[0] == down_dir {

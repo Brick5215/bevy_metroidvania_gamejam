@@ -6,7 +6,10 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use crate::{player::Player, general_components::FadeInOut};
+use crate::{
+    entities::player::Player, 
+    general::general_components::FadeInOut
+};
 
 //============================================================================
 

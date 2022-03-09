@@ -1,15 +1,24 @@
+//===============================================================
+
 use bevy::{prelude::*, render::render_resource::TextureUsages};
 use bevy_ecs_ldtk::prelude::*;
 use heron::prelude::*;
+use bevy_prototype_lyon::prelude::*;
+
+//===============================================================
 
 mod arena;
 mod physics;
-mod player;
-
 mod animation;
-mod general_components;
-mod systems;
-mod tools;
+
+mod general;
+mod entities;
+
+
+
+mod weapons;
+
+//===============================================================
 
 fn main() {
     
@@ -17,40 +26,53 @@ fn main() {
         //-------------------------------------------------
 
         .add_plugins(DefaultPlugins)
+
+        //-------------------------------------------------
+        //Add External Plugins
         .add_plugin(PhysicsPlugin::default())
         .add_plugin(LdtkPlugin)
+        .add_plugin(ShapePlugin)
 
+        //Add Own plugins
         .add_plugin(animation::AnimationPlugin)
         .add_plugin(physics::CustomPhysicsPlugin)
-        .add_plugin(player::PlayerPlugin)
+        .add_plugin(entities::player::PlayerPlugin)
+        //.add_plugin(entities::weapon::WeaponPlugin)
+        .add_plugin(weapons::WeaponPlugin)
         .add_plugin(arena::ArenaPlugin)
 
         //-------------------------------------------------
 
+        .insert_resource(Msaa { samples: 4 })
         .insert_resource(Gravity::from(Vec2::new(0., -450.,)))
+        
+        //===============================================================
 
         .insert_resource(LevelSelection::Uid(0))
         .insert_resource(LdtkSettings {
             load_level_neighbors: true,
             use_level_world_translations: true,
+            //set_clear_color: true,
+            ..Default::default()
         })
 
         //-------------------------------------------------
 
-        .add_startup_system(systems::setup)
-
-        .add_system(systems::pause_physics_while_load)
-
-        .add_system(systems::fade_in_out)
+        .add_startup_system(general::systems::setup)
         .add_system(set_texture_filters_to_nearest)
 
-        //-------------------------------------------------
+        .add_system(general::systems::pause_physics_while_load)
+
+        .add_system(general::systems::fade_in_out)
+
+        //.add_system(entities::weapons::equip_weapon)
 
         //-------------------------------------------------
 
         .run();
 }
 
+//===============================================================
 
 pub fn set_texture_filters_to_nearest(
     mut texture_events: EventReader<AssetEvent<Image>>,
@@ -70,3 +92,5 @@ pub fn set_texture_filters_to_nearest(
         }
     }
 }
+
+//===============================================================
