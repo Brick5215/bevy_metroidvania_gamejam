@@ -2,9 +2,7 @@
 
 use bevy::prelude::*;
 
-use super::weapon_components::{
-    WeaponBundle, WeaponCharge, WeaponAttack, Projectile,
-};
+use super::weapon_components::*;
 
 //================================================================================
 

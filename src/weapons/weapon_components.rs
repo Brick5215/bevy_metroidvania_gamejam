@@ -9,7 +9,10 @@ use heron::{Velocity, CollisionShape};
 
 use std::time::Duration;
 
-use crate::{physics::ColliderBundle, general::tools::rotate_vector};
+use crate::{
+    general::tools::rotate_vector,
+    physics::physics_components::ColliderBundle
+};
 
 //================================================================================
 

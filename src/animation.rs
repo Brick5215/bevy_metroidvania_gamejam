@@ -13,9 +13,10 @@ use heron::prelude::*;
 pub enum AnimationType {
     Idle,
     Walk,
-    //Sprint,
-    //Jump,
-    //Fall,
+    Sprint,
+    Jump,
+    Fall,
+    Custom (String),
 }
 impl Default for AnimationType {
     fn default() -> Self {
@@ -36,6 +37,11 @@ pub struct ChangeAnimationEvent {
     pub restart_animation: bool,
     pub flipped: FlipAnimation,
 }
+
+//==================================================================
+
+#[derive(Component, Default, Clone)]
+pub struct AutoAnimation(bool);
 
 //==================================================================
 

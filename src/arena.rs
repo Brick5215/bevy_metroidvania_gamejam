@@ -7,7 +7,7 @@ use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
-    entities::player::Player, 
+    player::Player, 
     general::general_components::FadeInOut
 };
 
@@ -441,7 +441,11 @@ impl Plugin for ArenaPlugin {
             .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
             .add_event::<LevelChangedEvent>()
             
-            .register_ldtk_int_cell::<WallBundle>(1)
+            //.register_ldtk_int_cell::<WallBundle>(1)
+            //.register_ldtk_int_cell::<WallBundle>(3)
+
+            .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 1)
+            .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 3)
 
             .add_system(spawn_wall_collision)
             .add_system(change_level)

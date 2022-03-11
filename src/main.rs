@@ -10,10 +10,9 @@ use bevy_prototype_lyon::prelude::*;
 mod arena;
 mod physics;
 mod animation;
+mod player;
 
 mod general;
-mod entities;
-
 
 
 mod weapons;
@@ -36,7 +35,7 @@ fn main() {
         //Add Own plugins
         .add_plugin(animation::AnimationPlugin)
         .add_plugin(physics::CustomPhysicsPlugin)
-        .add_plugin(entities::player::PlayerPlugin)
+        .add_plugin(player::PlayerPlugin)
         //.add_plugin(entities::weapon::WeaponPlugin)
         .add_plugin(weapons::WeaponPlugin)
         .add_plugin(arena::ArenaPlugin)
@@ -44,7 +43,7 @@ fn main() {
         //-------------------------------------------------
 
         .insert_resource(Msaa { samples: 4 })
-        .insert_resource(Gravity::from(Vec2::new(0., -450.,)))
+        .insert_resource(Gravity::from(Vec2::new(0., -500.,)))
         
         //===============================================================
 

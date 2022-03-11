@@ -12,7 +12,8 @@ pub fn setup(
 ) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
-    let ldtk_handle = assets.load("Tilemaps/TileMapMain.ldtk");
+    //let ldtk_handle = assets.load("Tilemaps/TileMapMain.ldtk");
+    let ldtk_handle = assets.load("Tilemaps/TileMapTheNew.ldtk");
     commands.spawn_bundle(LdtkWorldBundle {
         ldtk_handle,
         ..Default::default()

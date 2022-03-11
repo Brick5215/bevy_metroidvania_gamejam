@@ -6,14 +6,20 @@ use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
     animation::{SpriteSheetAnimation, AnimationType, Animation}, 
-    physics::{
+    physics::physics_components::{
         MovementBundle, ColliderBundle, MaxVelocity, 
         MoveDir, Accel, CanJump, IsGrounded, JumpEvent
     }, 
     weapons::weapon_components::{
-        WeaponState, WeaponBundle, WeaponInventory, WeaponInventoryBundle, WeaponDirection, WeaponDirections
+        WeaponState, WeaponBundle, WeaponInventory,
+        WeaponInventoryBundle, WeaponDirection, WeaponDirections
     }
 };
+
+//===============================================================
+
+const PLAYER_WIDTH:             f32 = 18.;
+const PLAYER_HEIGHT:            f32 = 32.;
 
 //===============================================================
 
@@ -25,12 +31,19 @@ const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::X;
 
 //===============================================================
 
-const PLAYER_MAX_SPEED: f32 = 120.;
-const PLAYER_ACCELERATION: f32 = 400.;
-const PLAYER_DEACCELERATION: f32 = 400.;
-const PLAYER_JUMP_FORCE: f32 = 300.;
+const PLAYER_MAX_SPEED:         f32 = 120.;
+const PLAYER_MAX_SPRINT_SPEED:  f32 = 180.;
+const PLAYER_ACCELERATION:      f32 = 400.;
+const PLAYER_DEACCELERATION:    f32 = 400.;
+const PLAYER_JUMP_FORCE:        f32 = 300.;
 
 //===============================================================
+
+#[derive(Component, Default, Clone)]
+pub struct PlayerSprint {
+    sprint_speed: f32,
+    normal_speed: f32,
+}
 
 //===============================================================
 
@@ -38,17 +51,18 @@ const PLAYER_JUMP_FORCE: f32 = 300.;
 pub struct Player;
 #[derive(Clone, Default, Bundle)]
 pub struct PlayerBundle {
-    player: Player,
-    pub worldly: Worldly,
+    player:         Player,
+    pub worldly:    Worldly,
     #[bundle]
-    sprite: SpriteSheetBundle,
-    animation: SpriteSheetAnimation,
+    sprite:         SpriteSheetBundle,
+    animation:      SpriteSheetAnimation,
     #[bundle]
-    physics: ColliderBundle,
+    physics:        ColliderBundle,
     #[bundle]
-    movement: MovementBundle,
+    movement:       MovementBundle,
     #[bundle]
-    weapons: WeaponInventoryBundle,
+    weapons:        WeaponInventoryBundle,
+    sprint:         PlayerSprint,
     
 }
 
@@ -109,7 +123,7 @@ impl LdtkEntity for PlayerBundle {
                 ..Default::default()
             },
             animation: sprite_sheet_animation,
-            physics: ColliderBundle::player(width, height),
+            physics: ColliderBundle::player(PLAYER_WIDTH, PLAYER_HEIGHT),
             movement: MovementBundle {
                 move_dir: MoveDir(0.),
                 max_velocity: MaxVelocity {
@@ -135,6 +149,10 @@ impl LdtkEntity for PlayerBundle {
                 }
             },
             weapons: WeaponInventoryBundle::default(),
+            sprint: PlayerSprint{
+                sprint_speed: PLAYER_MAX_SPRINT_SPEED,
+                normal_speed: PLAYER_MAX_SPEED,
+            }
         }
     }
 }
@@ -159,6 +177,24 @@ pub fn player_move(
     }
 }
 
+pub fn player_sprint(
+    mut player_query: Query<(&mut MaxVelocity, &PlayerSprint)>,
+    key_input: Res<Input<KeyCode>>,
+) {
+    let sprinting = key_input.pressed(KeyCode::LShift);
+
+    for (mut max_vel, sprint) in player_query.iter_mut() {
+
+        if sprinting {
+            max_vel.x = sprint.sprint_speed;
+        }
+        else {
+            max_vel.x = sprint.normal_speed;
+        }
+
+    }
+}
+
 pub fn player_jump(
     mut query: Query<(Entity, &IsGrounded), (With<Player>, With<CanJump>)>,
     key_input: Res<Input<KeyCode>>,
@@ -180,24 +216,15 @@ pub fn player_weapon_aim(
     key_input: Res<Input<KeyCode>>,
 ) { 
 
-
     let mut dir = Vec2::ZERO;
+    if key_input.pressed(KeyCode::Right)    { dir.x += 1.; }
+    if key_input.pressed(KeyCode::Left)     { dir.x -= 1.; }
 
-    if key_input.pressed(KeyCode::Right) {
-        dir.x += 1.;
-    }
-    if key_input.pressed(KeyCode::Left) {
-        dir.x -= 1.;
-    }
-
-    if key_input.pressed(KeyCode::Up) {
-        dir.y += 1.;
-    }
-    if key_input.pressed(KeyCode::Down) {   
-        dir.y -= 1.;
-    }
+    if key_input.pressed(KeyCode::Up)       { dir.y += 1.; }
+    if key_input.pressed(KeyCode::Down)     { dir.y -= 1.; }
 
     if dir == Vec2::ZERO { return }
+
 
     if let Ok(weapons) = player_query.get_single() {
 
@@ -229,37 +256,32 @@ pub fn player_attack(
 
     if let Ok(weapons) = player_query.get_single() {
 
+        let mut set_weapon_charge = |pressed, released, slot: &Option<Entity>| {
+            if pressed || released {
+                if let Some(slot1) = slot {
+                    if let Ok(mut weapon) = weapon_query.get_mut(*slot1) {
+                        if pressed {
+                            weapon.charging = true;
+                        }
+                        if released {
+                            weapon.charging = false;
+                        }
+                    }
+                }
+            }
+        };
+
         let primary_pressed = key_input.just_pressed(PLAYER_PRIMARY_ATTACK);
         let primary_released = key_input.just_released(PLAYER_PRIMARY_ATTACK);
+        let primary_weapon = weapons.get_slot1();
+        set_weapon_charge(primary_pressed, primary_released, primary_weapon);
 
-        if primary_pressed || primary_released {
-            if let Some(slot1) = weapons.get_slot1() {
-                if let Ok(mut weapon) = weapon_query.get_mut(*slot1) {
-                    if primary_pressed {
-                        weapon.charging = true;
-                    }
-                    if primary_released {
-                        weapon.charging = false;
-                    }
-                }
-            }
-        }
-        
+
         let secondary_pressed   = key_input.just_pressed(PLAYER_SECONDARY_ATTACK);
         let secondary_released  = key_input.just_released(PLAYER_SECONDARY_ATTACK);
+        let secondary_weapon = weapons.get_slot2();
+        set_weapon_charge(secondary_pressed, secondary_released, secondary_weapon);
 
-        if secondary_pressed || secondary_released {
-            if let Some(slot2) = weapons.get_slot2() {
-                if let Ok(mut weapon) = weapon_query.get_mut(*slot2) {
-                    if secondary_pressed {
-                        weapon.charging = true;
-                    }
-                    if secondary_released {
-                        weapon.charging = false;
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -312,6 +334,7 @@ impl Plugin for PlayerPlugin {
             .register_ldtk_entity::<PlayerBundle>("Player")
 
             .add_system(player_move)
+            .add_system(player_sprint)
             .add_system(player_jump)
 
             .add_system(equip_player_weapon)
