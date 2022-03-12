@@ -7,8 +7,8 @@ use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
-    player::Player, 
-    general::general_components::FadeInOut
+    player::player_components::Player, 
+    general::general_components::FadeInOut, physics::physics_components::CollisionLayer
 };
 
 //============================================================================
@@ -26,6 +26,8 @@ pub struct FogOfWar(pub i32);
 //============================================================================
 
 pub struct LevelChangedEvent(pub i32);
+
+//============================================================================
 
 //============================================================================
 
@@ -143,6 +145,10 @@ fn spawn_wall_collision(
                     previous_rects = current_rects;
                 }
 
+                let collision_layer = CollisionLayers::none()
+                    .with_group(CollisionLayer::Tile)
+                    .with_mask(CollisionLayer::Player);
+
                 // spawn colliders for every rectangle
                 for wall_rect in wall_rects {
                     commands
@@ -173,7 +179,8 @@ fn spawn_wall_collision(
                         // Making the collider a child of the level serves two purposes:
                         // 1. Adjusts the transforms to be relative to the level for free
                         // 2. the colliders will be despawned automatically when levels unload
-                        .insert(Parent(level_entity));
+                        .insert(Parent(level_entity))
+                        .insert(collision_layer.clone());
                 }
             }
         });

@@ -17,7 +17,8 @@ impl Plugin for CustomPhysicsPlugin {
             .add_system(physics_systems::cap_velocity)
             .add_system(physics_systems::apply_movespeed)
             .add_system(physics_systems::apply_jump)
-            .add_system(physics_systems::check_grounded)
+            .add_system(physics_systems::check_on_ground)
+            .add_system(physics_systems::check_on_wall)
             .add_system(physics_systems::reset_jump)
         ;
     }

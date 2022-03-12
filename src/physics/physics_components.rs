@@ -6,12 +6,22 @@ use heron::prelude::*;
 
 //===============================================================
 
+#[derive(PhysicsLayer)]
+pub enum CollisionLayer {
+    Tile,
+    Player,
+    Enemy,
+}
+
+//===============================================================
+
 #[derive(Clone, Debug, Default, Bundle, LdtkIntCell)]
 pub struct ColliderBundle {
     pub collider: CollisionShape,
     pub rigid_body: RigidBody,
     pub rotation_constraints: RotationConstraints,
     pub physic_material: PhysicMaterial,
+    pub collision_layer: CollisionLayers,
 }
 impl ColliderBundle {
     pub fn player(width: f32, height: f32) -> Self {
@@ -27,6 +37,7 @@ impl ColliderBundle {
                 density: 1.,
                 friction: 0.,
             },
+            collision_layer: CollisionLayers::new(CollisionLayer::Player, CollisionLayer::Tile),
             ..Default::default()
         }
     }
@@ -57,6 +68,7 @@ pub struct MaxVelocity {
 pub struct Accel {
     pub accel: f32,
     pub deaccel: f32,
+    pub air_deaccel: Option<f32>,
 }
 
 #[derive(Component, Clone, Default)]
@@ -64,9 +76,7 @@ pub struct MoveDir(pub f32);
 
 #[derive(Component, Clone, Default)]
 pub struct CanJump {
-    //pub can_jump: bool,
     pub jump_force: f32,
-    //pub jump_start: bool,
     pub jumps_left: u32,
     pub total_jumps: u32,
 }
@@ -87,10 +97,18 @@ pub struct MovementBundle {
 pub struct IsGrounded {
     pub grounded: bool,
     pub time_since_grounded: f32,
-    pub entities_below: Vec<Entity>,
+    pub walls_below: Vec<Entity>,
 }
 
 pub struct JumpEvent(pub Entity);
 pub struct GroundedEvent(pub Entity);
+
+//===============================================================
+
+#[derive(Component, Clone, Default)]
+pub struct IsOnWall {
+    pub on_wall: bool,
+    pub walls_touching: Vec<Entity>,
+}
 
 //===============================================================
