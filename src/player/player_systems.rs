@@ -11,7 +11,7 @@ use crate::{
     }, 
     physics::physics_components::{
          MaxVelocity, 
-        MoveDir, CanJump, IsGrounded, JumpEvent, IsOnWall
+        MoveDir, CanJump, IsGrounded, IsOnWall
     }, 
     weapons::weapon_components::{
         WeaponState, WeaponBundle, WeaponInventory,
@@ -60,17 +60,15 @@ pub fn _player_sprint(
 }
 
 pub fn player_jump(
-    mut query: Query<(Entity, &IsGrounded), (With<Player>, With<CanJump>)>,
+    mut query: Query<&mut CanJump, With<Player>>,
     key_input: Res<Input<KeyCode>>,
-    mut jump_event: EventWriter<JumpEvent>,
 ) {
+    let jump_pressed = key_input.pressed(PLAYER_JUMP);
+    let jump_just_pressed = key_input.just_pressed(PLAYER_JUMP);
 
-    let jump_pressed = key_input.just_pressed(PLAYER_JUMP);
-
-    for (entity, grounded) in query.iter_mut() {
-        if jump_pressed && grounded.time_since_grounded < 0.2 {
-            jump_event.send(JumpEvent(entity));
-        }
+    for mut can_jump in query.iter_mut() {
+        can_jump.jump_pressed = jump_pressed;
+        can_jump.jump_repressed = jump_just_pressed;
     }
 }
 
@@ -83,6 +81,7 @@ pub fn player_cling_cooldown(
     for mut cling in cling_query.iter_mut() {
         cling.cling_cooldown.tick(time.delta());
     }
+    
 }
 
 pub fn player_wall_cling(
@@ -295,11 +294,14 @@ pub fn equip_player_weapon(
     mut player_query: Query<(&mut WeaponInventory, Entity), With<Player>>,
     key_input: Res<Input<KeyCode>>,
     mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
+    
     if key_input.just_pressed(KeyCode::P) {
 
         let (mut inv, player) = player_query.single_mut();
-        let new_weapon = commands.spawn_bundle(WeaponBundle::create_knife()).id();
+        let new_weapon = commands.spawn_bundle(WeaponBundle::create_sword(&assets, &mut texture_atlases, true)).id();
 
         if inv.add_slot1_weapon(new_weapon) {
             //Weapon added successfully
@@ -315,7 +317,7 @@ pub fn equip_player_weapon(
     else if key_input.just_pressed(KeyCode::O) {
 
         let (mut inv, player) = player_query.single_mut();
-        let new_weapon = commands.spawn_bundle(WeaponBundle::create_throwing_knife()).id();
+        let new_weapon = commands.spawn_bundle(WeaponBundle::create_throwing_knife(&assets, &mut texture_atlases, true)).id();
 
         if inv.add_slot2_weapon(new_weapon) {
             //Weapon added successfully
@@ -329,5 +331,9 @@ pub fn equip_player_weapon(
         }
     }
 }
+
+//===============================================================
+
+
 
 //===============================================================

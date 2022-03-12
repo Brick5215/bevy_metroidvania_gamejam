@@ -1,7 +1,9 @@
 //================================================================================
 
 use bevy::prelude::*;
-use heron::Velocity;
+use heron::{Velocity, RigidBody, CollisionEvent, CollisionLayers};
+use crate::{physics::physics_components::{SetGravityScale, CollisionLayer}, general::general_components::{HealthChangeEvent, HealthChangeType}};
+
 use super::weapon_components::*;
 
 //================================================================================
@@ -43,36 +45,47 @@ pub fn fire_weapon(
 
         if let Ok((entity, transform, mut charge, attack, direction)) = weapon_query.get_mut(event.0) {
 
-            //println!("Weapon fired at {}% charge with facing right = {}", charge.get_charge_percent() * 100., direction.right_facing);
-
-            let mut new_projectile = ProjectileAttackBundle::new(&attack.to_spawn, &direction);
+            let mut new_projectile = ProjectileAttackBundle::new(entity, &attack.to_spawn, &direction, attack.is_friendly);
 
             if !attack.child_of_parent {
                 new_projectile.add_transform(transform.translation);
             }
 
-            let new_attack = commands.spawn_bundle(new_projectile).id();
+            let mut new_attack = commands.spawn_bundle(new_projectile);
+
+            if let Some(val) = attack.gravity_scale {
+                new_attack.insert(SetGravityScale(val));
+            }
+
+            let new_attack = new_attack.id();
 
             if attack.child_of_parent {
                 commands.entity(entity).add_child(new_attack);
             }
 
             charge.reset();
-
-
         }
     }
 }
 
 //================================================================================
 
+//================================================================================
+
 pub fn projectile_travel(
-    mut query: Query<(&Velocity, &mut Transform), With<ProjectileDamage>>,
+    mut query: Query<(&Velocity, &mut Transform, &RigidBody), With<ProjectileDamage>>,
     time: Res<Time>,
 ) {
 
+
+
     let delta = time.delta().as_secs_f32();
-    for (velocity, mut transform) in query.iter_mut() {
+    for (velocity, mut transform, body) in query.iter_mut() {
+
+        match body {
+            RigidBody::Dynamic => {continue},
+            _ => {}
+        }
 
         transform.translation += velocity.linear * delta;
         
@@ -91,6 +104,77 @@ pub fn projectile_expire(
             commands.entity(entity).despawn();
         }
         expire.tick(time.delta());
+    }
+}
+
+//================================================================================
+
+pub fn projectile_collision(
+    mut projectile_query: Query<(Entity, &mut CollisionLayers, Option<&ProjectileDamage>), With<Projectile>>,
+    mut collision_events: EventReader<CollisionEvent>,
+    mut health_events: EventWriter<HealthChangeEvent>,
+    mut commands: Commands,
+) {
+
+    for event in collision_events.iter() {
+        match event {
+            CollisionEvent::Started(d1, d2) => {
+
+                let d1_weapon = if d1.collision_layers().contains_group(CollisionLayer::Weapon) {
+                    true
+                } else {
+                    false
+                };
+                let d2_weapon = if d2.collision_layers().contains_group(CollisionLayer::Weapon) {
+                    true
+                } else {
+                    false
+                };
+
+                //This should never happen but since we're
+                //comparing both, might as well check
+                if d1_weapon && d2_weapon { 
+                    continue;
+                }
+
+                let (weapon, to_test) = if d1_weapon {
+                    (d1, d2)
+                } else {
+                    (d2, d1)
+                };
+
+                //Collided with a wall. If ranged projectile, should be
+                //disabled
+                if to_test.collision_layers().contains_group(CollisionLayer::Tile) {
+                    if let Ok((entity, mut layer, _)) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+                        //If collided, remove projectile damage and disable physics
+                        commands.entity(entity)
+                            .remove::<ProjectileDamage>()
+                            .insert(RigidBody::Sensor);
+                        
+                        *layer = layer.without_mask(CollisionLayer::Tile);
+                    }
+                }
+                //Collided with an entity. Because weapon should not collide
+                //with entity layer directly, it will have collided with
+                //friendly or enemy layer and hence this so dont have to check
+                //for friendly fire (thats what i'm hoping for at least)
+                else if to_test.collision_layers().contains_group(CollisionLayer::Entity) {
+
+                    if let Ok((_, _, Some(damage))) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+
+                        let to_damage = to_test.rigid_body_entity();
+                        health_events.send(
+                            HealthChangeEvent {
+                                entity: to_damage,
+                                change_type: HealthChangeType::Add{value: -damage.0},
+                            }
+                        )
+                    }
+                }
+            },
+            _ => {}
+        }
     }
 }
 

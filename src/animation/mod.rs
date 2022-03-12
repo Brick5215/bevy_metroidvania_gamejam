@@ -17,13 +17,13 @@ impl Plugin for AnimationPlugin {
 
             .add_system_to_stage(CoreStage::PreUpdate, animation_systems::set_sprite_auto)
 
-            .add_system_to_stage(CoreStage::PostUpdate, 
-                animation_systems::change_animation
-                .label("ChangeAnimation")
-            )
-            .add_system_to_stage(CoreStage::PostUpdate, 
-                animation_systems::animate_spritesheet
-                .after("ChangeAnimation")
+
+            .add_system_set_to_stage(
+                CoreStage::PostUpdate,
+                SystemSet::new()
+                    .with_system(animation_systems::change_animation.label("ChangeAnimation"))
+                    .with_system(animation_systems::animate_spritesheet.after("ChangeAnimation"))
+                    .with_system(animation_systems::animate_simple_spritesheet)
             )
         ;
     }

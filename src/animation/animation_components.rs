@@ -50,7 +50,7 @@ pub struct AutoAnimation {
 
 //==================================================================
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Animation {
     texture_atlas: Handle<TextureAtlas>,
     timer: Timer,
@@ -118,7 +118,7 @@ impl Animation {
     pub fn current_frame(&self) -> usize {
         self.current_frame
     }
-    pub fn iterate_frame(&mut self) {
+    pub fn next_frame(&mut self) {
         self.current_frame += 1;
     }
     pub fn restart_animation(&mut self) {
@@ -174,6 +174,116 @@ impl SpriteSheetAnimation {
                 return None
             },
         }
+    }
+}
+
+//==================================================================
+
+#[derive(Bundle, Clone)]
+pub struct SimpleAnimationBundle {
+    pub animation: SimpleAnimation,
+    #[bundle]
+    pub sprite_sheet: SpriteSheetBundle,
+}
+impl SimpleAnimationBundle {
+    pub fn new(
+        animation_type: AnimationType,
+        frame_steps: Vec<f32>,
+        repeating: bool,
+        animation_handle: Handle<TextureAtlas>,
+
+    ) -> Self {
+
+        SimpleAnimationBundle {
+
+            animation: SimpleAnimation::with_custom_framesteps(
+                animation_type,
+                frame_steps,
+                repeating,
+            ),
+            sprite_sheet: SpriteSheetBundle {
+                texture_atlas: animation_handle,
+                ..Default::default()
+            }
+        }
+    }
+}
+
+
+#[derive(Component, Clone, Default)]
+pub struct SimpleAnimation {
+    animation_type: AnimationType,
+    timer: Timer,
+    frame_steps: Vec<f32>,
+    current_frame: usize,
+}
+impl SimpleAnimation {
+
+    pub fn with_custom_framesteps(animation_type: AnimationType, frame_steps: Vec<f32>, repeating: bool) -> Self {
+
+        let mut total_time = 0.;
+        for time in frame_steps.iter() {
+            total_time += time;
+        }
+
+        SimpleAnimation {
+            animation_type,
+            timer: Timer::from_seconds(total_time, repeating),
+            frame_steps: SimpleAnimation::create_timesteps(frame_steps),
+            current_frame: 0,
+        }
+    }
+
+    pub fn with_fixed_framesteps(animation_type: AnimationType, frame_step: f32, total_frames: usize, repeating: bool) -> Self {
+
+        let frame_steps = vec![frame_step; total_frames];
+
+        SimpleAnimation {
+            animation_type,
+            timer: Timer::from_seconds(frame_step * total_frames as f32, repeating),
+            frame_steps: SimpleAnimation::create_timesteps(frame_steps),
+            current_frame: 0,
+        }
+    }
+
+    fn create_timesteps(time_steps: Vec<f32>) -> Vec<f32> {
+
+        let mut to_return = vec!();
+        let mut total = 0.;
+
+        for n in 0..time_steps.len() {
+            total += time_steps[n];
+            to_return.push(total);
+        }
+
+        return to_return
+
+    }
+
+
+    pub fn tick(&mut self, delta: Duration) {
+        self.timer.tick(delta);
+    }
+    pub fn get_time(&self) -> Duration {
+        return self.timer.elapsed();
+    }
+    pub fn done(&self) -> bool {
+        return self.timer.finished();
+    }
+    pub fn restart_animation(&mut self) {
+        self.current_frame = 0;
+    }
+    pub fn current_frame(&self) -> usize {
+        return self.current_frame;
+    }
+    pub fn frame_step(&self, index: usize) -> f32 {
+        return self.frame_steps[index];
+    }
+    pub fn next_frame(&mut self) {
+        self.current_frame += 1;
+    }
+    pub fn animation_type(&self) -> AnimationType {
+        return self.animation_type.clone();
     }
 }
 

@@ -36,7 +36,6 @@ fn main() {
         .add_plugin(animation::AnimationPlugin)
         .add_plugin(physics::CustomPhysicsPlugin)
         .add_plugin(player::PlayerPlugin)
-        //.add_plugin(entities::weapon::WeaponPlugin)
         .add_plugin(weapons::WeaponPlugin)
         .add_plugin(arena::ArenaPlugin)
 
@@ -64,7 +63,10 @@ fn main() {
 
         .add_system(general::systems::fade_in_out)
 
-        //.add_system(entities::weapons::equip_weapon)
+        //-------------------------------------------------
+
+        .add_event::<general::general_components::HealthChangeEvent>()
+        .add_system(general::systems::change_health)
 
         //-------------------------------------------------
 

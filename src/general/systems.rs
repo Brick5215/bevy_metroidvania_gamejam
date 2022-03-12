@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
-use super::{tools, general_components::FadeInOut};
+use super::{tools, general_components::*};
 
 //================================================================
 
@@ -62,6 +62,27 @@ pub fn fade_in_out(
                 commands.entity(entity).remove::<FadeInOut>();
             }
             continue
+        }
+    }
+}
+
+//================================================================
+
+pub fn change_health(
+    mut health_query: Query<&mut Health>,
+    mut health_event: EventReader<HealthChangeEvent>,
+) {
+    for event in health_event.iter() {
+        if let Ok(mut health) = health_query.get_mut(event.entity) {
+
+            match event.change_type {
+                HealthChangeType::Set { value } => {
+                    health.set_health(value);
+                },
+                HealthChangeType::Add { value } => {
+                    health.add_health(value);
+                },
+            }
         }
     }
 }

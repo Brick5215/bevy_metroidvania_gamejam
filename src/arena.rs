@@ -145,9 +145,9 @@ fn spawn_wall_collision(
                     previous_rects = current_rects;
                 }
 
-                let collision_layer = CollisionLayers::none()
-                    .with_group(CollisionLayer::Tile)
-                    .with_mask(CollisionLayer::Player);
+                let collision_layer = CollisionLayers::all_masks::<CollisionLayer>()
+                    .without_mask(CollisionLayer::Tile)
+                    .with_group(CollisionLayer::Tile);
 
                 // spawn colliders for every rectangle
                 for wall_rect in wall_rects {

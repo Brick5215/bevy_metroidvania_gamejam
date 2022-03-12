@@ -31,10 +31,38 @@ pub fn animate_spritesheet(
 
             }
             else if animation.get_time().as_secs_f32() >= animation.get_frame_step(animation.current_frame()) {
-                animation.iterate_frame();
+                animation.next_frame();
                 sprite.index = animation.current_frame();
             }
         }
+    }
+}
+
+pub fn animate_simple_spritesheet(
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut SimpleAnimation, &mut TextureAtlasSprite)>,
+    mut animation_finished_event: EventWriter<AnimationFinishedEvent>,
+) {
+
+    for (entity, mut animation, mut sprite) in query.iter_mut() {
+
+        animation.tick(time.delta());
+
+        if animation.done() {
+            animation.restart_animation();
+            sprite.index = animation.current_frame();
+
+            animation_finished_event.send(AnimationFinishedEvent {
+                entity,
+                animation_type: animation.animation_type(),
+            })
+
+        }
+        else if animation.get_time().as_secs_f32() >= animation.frame_step(animation.current_frame()) {
+            animation.next_frame();
+            sprite.index = animation.current_frame();
+        }
+
     }
 }
 

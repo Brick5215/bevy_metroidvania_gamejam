@@ -10,7 +10,11 @@ use crate::{
         MovementBundle, ColliderBundle, MaxVelocity, 
         MoveDir, Accel, CanJump, IsOnWall
     }, 
-    weapons::weapon_components::WeaponInventoryBundle, general::tools::load_texture_atlas,
+    weapons::weapon_components::WeaponInventoryBundle,
+    general::{
+        tools::load_texture_atlas,
+        general_components::Health,
+    },
 };
 
 //===============================================================
@@ -31,14 +35,20 @@ pub const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::Z;
 
 //===============================================================
 
+pub const PLAYER_MAX_HEALTH:        i32 = 50;
+
 pub const PLAYER_MAX_SPEED:         f32 = 120.;
+pub const PLAYER_MAX_FALL_SPEED:    f32 = 400.;
 //pub const PLAYER_MAX_SPRINT_SPEED:  f32 = 180.;
 
 pub const PLAYER_ACCELERATION:      f32 = 400.;
 pub const PLAYER_DEACCELERATION:    f32 = 500.;
 pub const PLAYER_AIR_DEACCELERATION:f32 = 430.;
 
-pub const PLAYER_JUMP_FORCE:        f32 = 300.;
+pub const PLAYER_INITIAL_JUMP_FORCE:f32 = 170.;
+pub const PLAYER_JUMP_FORCE:        f32 = 800.;
+pub const PLAYER_JUMP_TIME:         f32 = 0.3;
+
 pub const PLAYER_FLING_SPEED:       f32 = 300.;
 pub const PLAYER_FLING_COOLDOWN:    f32 = 0.5;
 
@@ -88,6 +98,7 @@ pub struct PlayerWallBundle {
 #[derive(Clone, Default, Bundle)]
 pub struct PlayerBundle {
     player:         Player,
+    health:         Health,
     pub worldly:    Worldly,
     #[bundle]
     sprite:         SpriteSheetBundle,
@@ -226,12 +237,9 @@ impl LdtkEntity for PlayerBundle {
 
         Self {
             player: Player,
+            health: Health::new(PLAYER_MAX_HEALTH),
             worldly: Worldly::from_entity_info(entity_instance, layer_instance),
             sprite: SpriteSheetBundle {
-                sprite: TextureAtlasSprite {
-                    //custom_size: Some(Vec2::new(width, height)),
-                    ..Default::default()
-                },
                 texture_atlas: idle_atlas_handle,
                 transform: Transform::from_xyz(0., entity_instance.height as f32 * 2., 2.),
                 ..Default::default()
@@ -242,7 +250,7 @@ impl LdtkEntity for PlayerBundle {
                 move_dir: MoveDir(0.),
                 max_velocity: MaxVelocity {
                     x: PLAYER_MAX_SPEED,
-                    y: 600.,
+                    y: PLAYER_MAX_FALL_SPEED,
                 },
                 acceleration: Accel {
                     accel:          PLAYER_ACCELERATION,
@@ -250,7 +258,16 @@ impl LdtkEntity for PlayerBundle {
                     air_deaccel:    Some(PLAYER_AIR_DEACCELERATION),
                 },
                 jump: CanJump {
-                    jump_force:     PLAYER_JUMP_FORCE,
+                    jump_pressed:   false,
+                    jump_repressed: false,
+                    jumping:        false,
+                    jump_timer:     Timer::from_seconds(PLAYER_JUMP_TIME, false),
+                    //min_jump_timer: Timer::from_seconds(0.15, false),
+
+                    max_jump_force:     PLAYER_JUMP_FORCE,
+                    jump_force:         PLAYER_JUMP_FORCE,
+                    initial_jump_force: PLAYER_INITIAL_JUMP_FORCE,
+
                     jumps_left:     1,
                     total_jumps:    1,
                 },

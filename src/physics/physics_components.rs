@@ -9,8 +9,10 @@ use heron::prelude::*;
 #[derive(PhysicsLayer)]
 pub enum CollisionLayer {
     Tile,
+    Entity,
     Player,
     Enemy,
+    Weapon,
 }
 
 //===============================================================
@@ -37,20 +39,36 @@ impl ColliderBundle {
                 density: 1.,
                 friction: 0.,
             },
-            collision_layer: CollisionLayers::new(CollisionLayer::Player, CollisionLayer::Tile),
+            collision_layer: CollisionLayers::new(
+                CollisionLayer::Player, 
+                CollisionLayer::Tile)
+                .with_group(CollisionLayer::Entity),
             ..Default::default()
         }
     }
-    pub fn projectile(collider: CollisionShape) -> Self {
+    pub fn projectile(collider: CollisionShape, rigid_body: RigidBody, is_friendly: bool) -> Self {
+
+        let mut collision_layer = CollisionLayers::new(
+            CollisionLayer::Weapon,
+            CollisionLayer::Tile,
+        );
+        if is_friendly {
+            collision_layer = collision_layer.with_group(CollisionLayer::Player);
+        } else {
+            collision_layer = collision_layer.with_group(CollisionLayer::Enemy);
+        }
+
+
         Self {
             collider,
-            rigid_body: RigidBody::Sensor,
-            rotation_constraints: RotationConstraints::lock(),
+            rigid_body,
+            rotation_constraints: RotationConstraints::restrict_to_x_only(),
             physic_material: PhysicMaterial {
                 restitution: 0.,
-                density: 0.,
+                density: 0.1,
                 friction: 0.,
             },
+            collision_layer,
             ..Default::default()
         }
     }
@@ -76,7 +94,15 @@ pub struct MoveDir(pub f32);
 
 #[derive(Component, Clone, Default)]
 pub struct CanJump {
+    pub jump_pressed: bool,
+    pub jump_repressed: bool,
+    pub jumping: bool,
+    pub jump_timer: Timer,
+
+    pub max_jump_force: f32,
     pub jump_force: f32,
+    pub initial_jump_force: f32,
+
     pub jumps_left: u32,
     pub total_jumps: u32,
 }
@@ -100,7 +126,6 @@ pub struct IsGrounded {
     pub walls_below: Vec<Entity>,
 }
 
-pub struct JumpEvent(pub Entity);
 pub struct GroundedEvent(pub Entity);
 
 //===============================================================
@@ -110,5 +135,10 @@ pub struct IsOnWall {
     pub on_wall: bool,
     pub walls_touching: Vec<Entity>,
 }
+
+//===============================================================
+
+#[derive(Component)]
+pub struct SetGravityScale(pub f32);
 
 //===============================================================

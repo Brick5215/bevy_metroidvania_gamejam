@@ -5,13 +5,13 @@ use bevy_prototype_lyon::{
     prelude::*,
     entity::ShapeBundle,
 };
-use heron::{Velocity, CollisionShape};
+use heron::{Velocity, CollisionShape, RigidBody};
 
 use std::time::Duration;
 
 use crate::{
     general::tools::rotate_vector,
-    physics::physics_components::ColliderBundle
+    physics::physics_components::ColliderBundle, animation::animation_components::SimpleAnimationBundle
 };
 
 //================================================================================
@@ -65,10 +65,8 @@ impl WeaponInventory {
 
 //================================================================================
 
-#[derive(Bundle, Default)]
+#[derive(Bundle)]
 pub struct WeaponBundle {
-    //transform: Transform,
-    //global_transform: GlobalTransform,
     pub state:      WeaponState,
     pub direction:  WeaponDirection,
     pub charge:     WeaponCharge,
@@ -199,46 +197,65 @@ impl Default for WeaponPreviewBundle {
 
 #[derive(Component)]
 pub struct WeaponAttack {
-    pub to_spawn: Projectile,
+    pub to_spawn: ProjectileTemplate,
     pub child_of_parent: bool,
+    pub is_friendly: bool,
+    pub gravity_scale: Option<f32>,
 }
-impl Default for WeaponAttack {
+/*impl Default for WeaponAttack {
     fn default() -> Self {
         WeaponAttack {
-            to_spawn: Projectile::create_melee(
-                1.,
+            to_spawn: ProjectileTemplate::create_melee(
+                1,
                 1.,
                 Vec2::ZERO,
                 1.,
                 1.,
             ),
             child_of_parent: false,
+            is_friendly: true,
+            gravity_scale: None,
         }
     }
-}
+}*/
 
-pub struct Projectile {
-    pub damage: f32,
+pub struct ProjectileTemplate {
+    pub damage: i32,
     pub expire: f32,
     pub size: CollisionShape,
 
     pub initial_speed: Vec2,
     pub spawn_offset: Vec2,
-}
-impl Projectile {
-    pub fn create_range(damage: f32, expire: f32, spawn_offset: Vec2, size: f32, initial_speed: Vec2) -> Self {
 
-        Projectile {
+    pub rigid_body: RigidBody,
+    pub animation_bundle: SimpleAnimationBundle,
+}
+impl ProjectileTemplate {
+    pub fn create_range(
+        damage: i32, expire: f32, spawn_offset: Vec2, 
+        size: f32, initial_speed: Vec2,
+        rigid_body: RigidBody,
+        animation_bundle: SimpleAnimationBundle,
+
+    ) -> Self {
+
+        ProjectileTemplate {
             damage,
             expire,
             size: CollisionShape::Sphere{radius: size},
             initial_speed,
             spawn_offset,
+            rigid_body,
+            animation_bundle,
         }
     }
 
-    pub fn create_melee(damage: f32, expire: f32, spawn_offset: Vec2, width: f32, height: f32) -> Self {
-        Projectile {
+    pub fn create_melee(
+        damage: i32, expire: f32, spawn_offset: Vec2, 
+        width: f32, height: f32,
+        animation_bundle: SimpleAnimationBundle,
+    ) -> Self {
+        ProjectileTemplate {
             damage,
             expire,
             size: CollisionShape::Cuboid {
@@ -247,6 +264,8 @@ impl Projectile {
             },
             initial_speed: Vec2::ZERO,
             spawn_offset,
+            rigid_body: RigidBody::Sensor,
+            animation_bundle,
         }
     }
 }
@@ -260,27 +279,17 @@ pub struct FireWeaponEvent(pub Entity);
 
 #[derive(Bundle)]
 pub struct ProjectileAttackBundle {
+    projectile: Projectile,
     damage: ProjectileDamage,
     expire: ProjectileExpire,
     velocity: Velocity,
     #[bundle]
     collision: ColliderBundle,
     #[bundle]
-    sprite: SpriteBundle,
+    animation_bundle: SimpleAnimationBundle,
 }
 impl ProjectileAttackBundle {
-    pub fn new(base: &Projectile, dir: &WeaponDirection) -> ProjectileAttackBundle {
-
-        let mut projectile_size = Vec2::new(5., 5.,);
-        match base.size {
-            CollisionShape::Sphere { radius } => {
-                projectile_size = Vec2::new(radius * 2., radius * 2.,);
-            },
-            CollisionShape::Cuboid { half_extends, .. } => {
-                projectile_size = half_extends.truncate() * 2.;
-            },
-            _ => {},
-        }
+    pub fn new(parent: Entity, base: &ProjectileTemplate, dir: &WeaponDirection, is_friendly: bool) -> ProjectileAttackBundle {
 
         let rotation_angle = dir.direction.get_angle().to_radians();
         
@@ -293,30 +302,33 @@ impl ProjectileAttackBundle {
         }
         
 
+        let mut animation_copy = base.animation_bundle.clone();
+        animation_copy.sprite_sheet.transform = Transform::from_translation(projectile_offset.extend(40.));
+
 
         ProjectileAttackBundle {
+            projectile: Projectile(parent),
             damage: ProjectileDamage(base.damage),
             expire: ProjectileExpire::new(base.expire),
             velocity: Velocity::from_linear(projectile_velocity.extend(0.)),
-            collision: ColliderBundle::projectile(base.size.clone()),
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    color: Color::RED,
-                    custom_size: Some(projectile_size),
-                    ..Default::default()
-                },
-                transform: Transform::from_translation(projectile_offset.extend(40.)),
-                ..Default::default()
-            }
+            collision: ColliderBundle::projectile(base.size.clone(), base.rigid_body, is_friendly),
+            animation_bundle: animation_copy,
         }
     }
 
+    // Used by projectiles not attached to parent 
+    // to add global transform coords.
     pub fn add_transform(&mut self, to_add: Vec3) {
-        self.sprite.transform.translation += to_add;
+        self.animation_bundle.sprite_sheet.transform.translation += to_add;
     }
 }
 
-#[derive(Component)] pub struct ProjectileDamage(f32);
+//================================================================================
+
+#[derive(Component, Clone)] 
+pub struct Projectile (pub Entity);
+
+#[derive(Component)] pub struct ProjectileDamage(pub i32);
 #[derive(Component)] pub struct ProjectileExpire(Timer);
 impl ProjectileExpire {
     pub fn new(expire_time: f32) -> Self {

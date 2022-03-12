@@ -1,9 +1,16 @@
 //===============================================================
 
 use bevy::prelude::*;
-use heron::prelude::*;
+use heron::{
+    prelude::*, 
+    rapier_plugin::{
+        RigidBodyHandle, 
+        rapier2d::prelude::RigidBodySet, 
+        convert::IntoRapier
+        }
+    };
 
-use crate::general::tools::clamp_shift;
+use crate::general::tools::{clamp_shift, lerp};
 
 use super::physics_components::*;
 
@@ -74,18 +81,42 @@ pub fn apply_movespeed (
 //=================================================================================
 
 pub fn apply_jump (
-    mut jump_event: EventReader<JumpEvent>,
-    mut query: Query<(&mut CanJump, &mut Velocity)>
+    mut query: Query<(&mut CanJump, &mut Velocity, &IsGrounded)>,
+    time: Res<Time>
 ) {
 
-    for event in jump_event.iter() {
-        if let Ok((mut jumps, mut velocity)) = query.get_mut(event.0) {
+    for (mut can_jump, mut velocity, grounded) in query.iter_mut() {
+        
+        //Already jumping and jump is still pressed and still time left on jump
+        if can_jump.jumping && can_jump.jump_pressed && !can_jump.jump_timer.finished() {
+            velocity.linear.y += can_jump.jump_force * time.delta().as_secs_f32();
+            can_jump.jump_force = lerp(
+                can_jump.max_jump_force, 
+                can_jump.max_jump_force * 0.2, 
+                can_jump.jump_timer.percent());
+        }
+        //Entity stops jumping or jump expires
+        else if can_jump.jumping && (!can_jump.jump_pressed|| can_jump.jump_timer.finished()) {
+            can_jump.jumping = false;
+            can_jump.jumps_left -= 1;
+            can_jump.jump_force = can_jump.max_jump_force;
+        }
 
-            if jumps.jumps_left > 0 {
+        if can_jump.jumping {
+            can_jump.jump_timer.tick(time.delta());
+        }
 
-                velocity.linear.y = jumps.jump_force;
-                jumps.jumps_left -= 1;
-            }
+        //Entity is not jumping, has jumps left, is grounded and pressed the jump button
+        if     !can_jump.jumping 
+            && can_jump.jumps_left > 0 
+            && can_jump.jump_repressed 
+            && grounded.time_since_grounded < 0.2
+        {
+            can_jump.jumping = true;
+            can_jump.jump_timer.reset();
+
+            //Stop falling and add initial jump force
+            velocity.linear.y = can_jump.initial_jump_force;
         }
     }
 }
@@ -195,6 +226,23 @@ pub fn check_on_wall (
                     }
                 }
             }
+        }
+    }
+}
+
+//===============================================================
+
+pub fn set_gravity_scale(
+    query: Query<(Entity, &SetGravityScale, &RigidBodyHandle)>,
+    mut bodies: ResMut<RigidBodySet>,
+    mut commands: Commands,
+) {
+    for (entity, new_scale, handle) in query.iter() {
+        if let Some(body) = bodies.get_mut(handle.into_rapier()) {
+
+            body.set_gravity_scale(new_scale.0, false);
+
+            commands.entity(entity).remove::<SetGravityScale>();
         }
     }
 }

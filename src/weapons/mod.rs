@@ -21,6 +21,8 @@ impl Plugin for WeaponPlugin {
 
             .add_system(weapon_systems::projectile_travel)
             .add_system(weapon_systems::projectile_expire)
+
+            .add_system(weapon_systems::projectile_collision)
         ;
     }
 }
