@@ -26,17 +26,17 @@ impl Health {
             current_health: health,
         }
     }
-    pub fn new_full(max_health: i32, current_health: i32) -> Self {
+    pub fn _new_full(max_health: i32, current_health: i32) -> Self {
         Health {
             max_health,
             current_health,
         }
     }
 
-    pub fn get_health(&self) -> i32 {
+    pub fn _get_health(&self) -> i32 {
         return self.current_health;
     }
-    pub fn get_max_health(&self) -> i32 {
+    pub fn _get_max_health(&self) -> i32 {
         return self.max_health;
     }
     pub fn add_health(&mut self, to_add: i32) {
