@@ -15,7 +15,7 @@ impl Plugin for PlayerPlugin {
             .register_ldtk_entity::<player_components::PlayerBundle>("Player")
 
             .add_system(player_systems::player_move)
-            //.add_system(player_systems::player_sprint)
+            .add_system(player_systems::player_sprint)
 
             .add_system(player_systems::player_jump)
 
@@ -28,8 +28,9 @@ impl Plugin for PlayerPlugin {
             .add_system(player_systems::player_attack)
             .add_system(player_systems::player_weapon_aim)
 
+            .add_system(player_systems::player_damage)
 
-            //.add_system(player_systems::player_super_jump)
+
         ;
     }
 }

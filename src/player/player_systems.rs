@@ -16,7 +16,7 @@ use crate::{
     weapons::weapon_components::{
         WeaponState, WeaponBundle, WeaponInventory,
         WeaponDirection, WeaponDirections
-    },
+    }, general::general_components::{HealthChangeEvent, HealthChangeType},
 };
 
 //===============================================================
@@ -42,15 +42,15 @@ pub fn player_move(
     }
 }
 
-pub fn _player_sprint(
+pub fn player_sprint(
     mut player_query: Query<(&mut MaxVelocity, &PlayerSprint, &IsGrounded)>,
     key_input: Res<Input<KeyCode>>,
 ) {
-    let sprinting = key_input.pressed(KeyCode::LShift);
+    let sprinting = key_input.pressed(PLAYER_SPRINT);
 
     for (mut max_vel, sprint, grounded) in player_query.iter_mut() {
 
-        if sprinting && grounded.grounded {
+        if sprinting && grounded.grounded && sprint.can_sprint {
             max_vel.x = sprint.sprint_speed;
         }
         else {
@@ -301,7 +301,7 @@ pub fn equip_player_weapon(
     if key_input.just_pressed(KeyCode::P) {
 
         let (mut inv, player) = player_query.single_mut();
-        let new_weapon = commands.spawn_bundle(WeaponBundle::create_sword(&assets, &mut texture_atlases, true)).id();
+        let new_weapon = commands.spawn_bundle(WeaponBundle::create_throwing_knife(&assets, &mut texture_atlases, true)).id();
 
         if inv.add_slot1_weapon(new_weapon) {
             //Weapon added successfully
@@ -317,7 +317,7 @@ pub fn equip_player_weapon(
     else if key_input.just_pressed(KeyCode::O) {
 
         let (mut inv, player) = player_query.single_mut();
-        let new_weapon = commands.spawn_bundle(WeaponBundle::create_throwing_knife(&assets, &mut texture_atlases, true)).id();
+        let new_weapon = commands.spawn_bundle(WeaponBundle::create_sword(&assets, &mut texture_atlases, true)).id();
 
         if inv.add_slot2_weapon(new_weapon) {
             //Weapon added successfully
@@ -334,6 +334,24 @@ pub fn equip_player_weapon(
 
 //===============================================================
 
+pub fn player_damage(
+    mut event: EventWriter<HealthChangeEvent>,
+    player: Query<Entity, With<Player>>,
+    key_input: Res<Input<KeyCode>>,
+) {
 
+    for player in player.iter() {
+
+        if key_input.just_pressed(KeyCode::M) {
+            event.send(HealthChangeEvent {
+                entity: player,
+                change_type: HealthChangeType::Add{value: -10},
+            })
+
+        }
+
+    }
+
+}
 
 //===============================================================

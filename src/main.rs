@@ -11,6 +11,7 @@ mod arena;
 mod physics;
 mod animation;
 mod player;
+mod non_player;
 
 mod general;
 
@@ -38,6 +39,7 @@ fn main() {
         .add_plugin(player::PlayerPlugin)
         .add_plugin(weapons::WeaponPlugin)
         .add_plugin(arena::ArenaPlugin)
+        .add_plugin(non_player::NonPlayerPlugin)
 
         //-------------------------------------------------
 
@@ -56,17 +58,20 @@ fn main() {
 
         //-------------------------------------------------
 
-        .add_startup_system(general::systems::setup)
-        .add_system(set_texture_filters_to_nearest)
+        .add_startup_system(general::general_systems::setup)
+        //.add_system(set_texture_filters_to_nearest)
+        .add_system_to_stage(CoreStage::PreUpdate, set_texture_filters_to_nearest)
 
-        .add_system(general::systems::pause_physics_while_load)
+        .add_system(general::general_systems::pause_physics_while_load)
 
-        .add_system(general::systems::fade_in_out)
+        .add_system(general::general_systems::fade_in_out)
 
         //-------------------------------------------------
 
         .add_event::<general::general_components::HealthChangeEvent>()
-        .add_system(general::systems::change_health)
+        .add_system(general::general_systems::change_health)
+        .add_system(general::general_systems::health_flash)
+        .add_system(general::general_systems::do_iframes)
 
         //-------------------------------------------------
 

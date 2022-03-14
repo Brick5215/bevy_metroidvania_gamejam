@@ -207,6 +207,14 @@ impl SimpleAnimationBundle {
             }
         }
     }
+
+    pub fn flip_x(&mut self, flip: bool) {
+        self.sprite_sheet.sprite.flip_x = flip;
+    }
+    pub fn flip_y(&mut self, flip: bool) {
+        self.sprite_sheet.sprite.flip_y = flip;
+    }
+    
 }
 
 

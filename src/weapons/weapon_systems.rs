@@ -110,7 +110,7 @@ pub fn projectile_expire(
 //================================================================================
 
 pub fn projectile_collision(
-    mut projectile_query: Query<(Entity, &mut CollisionLayers, Option<&ProjectileDamage>), With<Projectile>>,
+    mut projectile_query: Query<(Entity, &mut CollisionLayers, Option<&ProjectileDamage>, Option<&mut Velocity>), With<Projectile>>,
     mut collision_events: EventReader<CollisionEvent>,
     mut health_events: EventWriter<HealthChangeEvent>,
     mut commands: Commands,
@@ -136,6 +136,10 @@ pub fn projectile_collision(
                 if d1_weapon && d2_weapon { 
                     continue;
                 }
+                //Neither of the collisions were weapons
+                if !d1_weapon && !d2_weapon {
+                    continue;
+                }
 
                 let (weapon, to_test) = if d1_weapon {
                     (d1, d2)
@@ -146,7 +150,8 @@ pub fn projectile_collision(
                 //Collided with a wall. If ranged projectile, should be
                 //disabled
                 if to_test.collision_layers().contains_group(CollisionLayer::Tile) {
-                    if let Ok((entity, mut layer, _)) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+                    if let Ok((entity, mut layer, _, _)) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+
                         //If collided, remove projectile damage and disable physics
                         commands.entity(entity)
                             .remove::<ProjectileDamage>()
@@ -161,7 +166,9 @@ pub fn projectile_collision(
                 //for friendly fire (thats what i'm hoping for at least)
                 else if to_test.collision_layers().contains_group(CollisionLayer::Entity) {
 
-                    if let Ok((_, _, Some(damage))) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+                    if let Ok((_, mut layer, Some(damage), Some(mut velocity))) = projectile_query.get_mut(weapon.rigid_body_entity()) {
+
+                        velocity.linear *= 0.2;
 
                         let to_damage = to_test.rigid_body_entity();
                         health_events.send(
@@ -169,7 +176,12 @@ pub fn projectile_collision(
                                 entity: to_damage,
                                 change_type: HealthChangeType::Add{value: -damage.0},
                             }
-                        )
+                        );
+
+                        *layer = layer
+                            .without_mask(CollisionLayer::Entity)
+                            .without_mask(CollisionLayer::Player)
+                            .without_mask(CollisionLayer::Enemy);
                     }
                 }
             },

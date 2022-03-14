@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 pub mod weapon_components;
 mod weapon_systems;
-pub mod weapon_defaults;
+pub mod weapon_prefabs;
 
 //===============================================================
 

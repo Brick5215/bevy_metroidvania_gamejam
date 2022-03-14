@@ -8,7 +8,7 @@ use crate::{
     }, 
     physics::physics_components::{
         MovementBundle, ColliderBundle, MaxVelocity, 
-        MoveDir, Accel, CanJump, IsOnWall
+        Accel, CanJump, IsOnWall
     }, 
     weapons::weapon_components::WeaponInventoryBundle,
     general::{
@@ -29,9 +29,10 @@ pub const PLAYER_RIGHT:             KeyCode = KeyCode::Right;
 
 pub const PLAYER_JUMP:              KeyCode = KeyCode::Space;
 pub const PLAYER_CLING:             KeyCode = KeyCode::X;
+pub const PLAYER_SPRINT:            KeyCode = KeyCode::Z;
 
 pub const PLAYER_PRIMARY_ATTACK:    KeyCode = KeyCode::C;
-pub const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::Z;
+pub const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::A;
 
 //===============================================================
 
@@ -39,7 +40,7 @@ pub const PLAYER_MAX_HEALTH:        i32 = 50;
 
 pub const PLAYER_MAX_SPEED:         f32 = 120.;
 pub const PLAYER_MAX_FALL_SPEED:    f32 = 400.;
-//pub const PLAYER_MAX_SPRINT_SPEED:  f32 = 180.;
+pub const PLAYER_MAX_SPRINT_SPEED:  f32 = 180.;
 
 pub const PLAYER_ACCELERATION:      f32 = 400.;
 pub const PLAYER_DEACCELERATION:    f32 = 500.;
@@ -56,6 +57,7 @@ pub const PLAYER_FLING_COOLDOWN:    f32 = 0.5;
 
 #[derive(Component, Default, Clone)]
 pub struct PlayerSprint {
+    pub can_sprint: bool,
     pub sprint_speed: f32,
     pub normal_speed: f32,
 }
@@ -108,9 +110,9 @@ pub struct PlayerBundle {
     physics:        ColliderBundle,
     #[bundle]
     movement:       MovementBundle,
+    sprint:         PlayerSprint,
     #[bundle]
     weapons:        WeaponInventoryBundle,
-    //sprint:         PlayerSprint,
 
     #[bundle]
     wall_bundle:    PlayerWallBundle,
@@ -237,7 +239,7 @@ impl LdtkEntity for PlayerBundle {
 
         Self {
             player: Player,
-            health: Health::new(PLAYER_MAX_HEALTH),
+            health: Health::new(PLAYER_MAX_HEALTH, 1.),
             worldly: Worldly::from_entity_info(entity_instance, layer_instance),
             sprite: SpriteSheetBundle {
                 texture_atlas: idle_atlas_handle,
@@ -247,7 +249,6 @@ impl LdtkEntity for PlayerBundle {
             animation: sprite_sheet_animation,
             physics: ColliderBundle::player(PLAYER_WIDTH, PLAYER_HEIGHT),
             movement: MovementBundle {
-                move_dir: MoveDir(0.),
                 max_velocity: MaxVelocity {
                     x: PLAYER_MAX_SPEED,
                     y: PLAYER_MAX_FALL_SPEED,
@@ -257,26 +258,14 @@ impl LdtkEntity for PlayerBundle {
                     deaccel:        PLAYER_DEACCELERATION,
                     air_deaccel:    Some(PLAYER_AIR_DEACCELERATION),
                 },
-                jump: CanJump {
-                    jump_pressed:   false,
-                    jump_repressed: false,
-                    jumping:        false,
-                    jump_timer:     Timer::from_seconds(PLAYER_JUMP_TIME, false),
-                    //min_jump_timer: Timer::from_seconds(0.15, false),
-
-                    max_jump_force:     PLAYER_JUMP_FORCE,
-                    jump_force:         PLAYER_JUMP_FORCE,
-                    initial_jump_force: PLAYER_INITIAL_JUMP_FORCE,
-
-                    jumps_left:     1,
-                    total_jumps:    1,
-                },
+                jump: CanJump::new(PLAYER_JUMP_TIME, PLAYER_JUMP_FORCE, PLAYER_INITIAL_JUMP_FORCE),
                 ..Default::default()
             },
-            //sprint: PlayerSprint{
-                //sprint_speed:       PLAYER_MAX_SPRINT_SPEED,
-                //normal_speed:       PLAYER_MAX_SPEED,
-            //},
+            sprint: PlayerSprint{
+                can_sprint:         true,
+                sprint_speed:       PLAYER_MAX_SPRINT_SPEED,
+                normal_speed:       PLAYER_MAX_SPEED,
+            },
             wall_bundle: PlayerWallBundle {
                 player_cling: PlayerWallCling::new(PLAYER_FLING_SPEED, PLAYER_FLING_COOLDOWN),
                 ..Default::default()

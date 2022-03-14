@@ -78,6 +78,35 @@ pub fn apply_movespeed (
     }
 }
 
+pub fn apply_full_movespeed (
+    mut query: Query<(&FullMoveDir, &Accel, &mut Velocity)>,
+    time: Res<Time>,
+) {
+
+    for (move_dir, accel, mut velocity) in query.iter_mut() {
+        if move_dir.0 != Vec2::ZERO {
+            velocity.linear += (move_dir.0 * accel.accel * time.delta().as_secs_f32()).extend(0.);
+        }
+        else {
+            if velocity.linear.x > 0. {
+                velocity.linear.x = (velocity.linear.x - accel.deaccel * time.delta().as_secs_f32()).max(0.);
+            }
+            else if velocity.linear.x < 0. {
+                velocity.linear.x = (velocity.linear.x + accel.deaccel * time.delta().as_secs_f32()).min(0.);
+            }
+
+            if velocity.linear.y > 0. {
+                velocity.linear.y = (velocity.linear.y - accel.deaccel * time.delta().as_secs_f32()).max(0.);
+            }
+            else if velocity.linear.y < 0. {
+                velocity.linear.y = (velocity.linear.y + accel.deaccel * time.delta().as_secs_f32()).min(0.);
+            }  
+        }
+
+    }
+
+}
+
 //=================================================================================
 
 pub fn apply_jump (

@@ -69,19 +69,80 @@ pub fn fade_in_out(
 //================================================================
 
 pub fn change_health(
-    mut health_query: Query<&mut Health>,
+    mut health_query: Query<(Entity, &mut Health)>,
     mut health_event: EventReader<HealthChangeEvent>,
+    mut commands: Commands,
 ) {
     for event in health_event.iter() {
-        if let Ok(mut health) = health_query.get_mut(event.entity) {
+        if let Ok((entity, mut health)) = health_query.get_mut(event.entity) {
 
             match event.change_type {
                 HealthChangeType::Set { value } => {
                     health.set_health(value);
                 },
                 HealthChangeType::Add { value } => {
+
+                    if value > 0 {  //Healing
+                        commands.entity(entity).insert(HealthFlash::new(Color::WHITE, Color::GREEN, 0.2));
+                    }
+                    else if value < 0 && !health.invincible() { //Damage
+                        commands.entity(entity).insert(HealthFlash::new(Color::WHITE, Color::RED, 0.2));
+                    }
+
                     health.add_health(value);
                 },
+            }
+        }
+    }
+}
+
+pub fn do_iframes(
+    mut health_query: Query<&mut Health>,
+    time: Res<Time>,
+) {
+    for mut health in health_query.iter_mut() {
+        health.tick(time.delta());
+    }
+}
+
+
+pub fn health_flash(
+    mut health_flash_query: Query<(Entity, &mut HealthFlash, Option<&mut Sprite>, Option<&mut TextureAtlasSprite>)>,
+    time: Res<Time>,
+    mut commands: Commands,
+) {
+    for (entity, mut flash, sprite, sprite_sheet) in health_flash_query.iter_mut() {
+
+        flash.change_timer.tick(time.delta());
+
+        let new_color = flash.start_color.lerp(flash.target_color, flash.change_timer.percent());
+
+
+        let new_color = Color::rgb(
+            new_color.x,
+            new_color.y,
+            new_color.z,
+        );
+
+        if let Some(mut sprite) = sprite {
+            sprite.color = new_color;
+        }
+        if let Some(mut sprite_sheet) = sprite_sheet {
+            sprite_sheet.color = new_color;
+        }
+
+
+        if flash.change_timer.finished() {
+
+            if flash.returning_to_original {
+                commands.entity(entity).remove::<HealthFlash>();
+            }
+            else {
+                flash.returning_to_original = true;
+                flash.start_color = flash.target_color;
+                flash.target_color = Vec3::ONE;
+
+                flash.change_timer.reset();
             }
         }
     }

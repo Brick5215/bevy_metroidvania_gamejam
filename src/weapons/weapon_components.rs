@@ -5,7 +5,7 @@ use bevy_prototype_lyon::{
     prelude::*,
     entity::ShapeBundle,
 };
-use heron::{Velocity, CollisionShape, RigidBody};
+use heron::{Velocity, CollisionShape, RigidBody, AxisAngle};
 
 use std::time::Duration;
 
@@ -91,10 +91,16 @@ pub struct WeaponDirection {
 
 pub enum WeaponDirections {
     Up,
+
     ForwardUp,
     Forward,
     ForwardDown,
+
     Down,
+
+    BackwardDown,
+    Backward,
+    BackwardUp,
 }
 impl Default for WeaponDirections {
     fn default() -> Self {
@@ -112,20 +118,23 @@ impl WeaponDirections {
             (1, 0,)     => {WeaponDirections::Forward},
             (1, -1,)    => {WeaponDirections::ForwardDown},
             (0, -1,)    => {WeaponDirections::Down},
-            (-1, -1,)   => {WeaponDirections::ForwardDown},
-            (-1, 0,)    => {WeaponDirections::Forward},
-            (-1, 1,)    => {WeaponDirections::ForwardUp},
+            (-1, -1,)   => {WeaponDirections::BackwardDown},
+            (-1, 0,)    => {WeaponDirections::Backward},
+            (-1, 1,)    => {WeaponDirections::BackwardUp},
             _           => {WeaponDirections::default()}
         }
     }
     fn get_angle(&self) -> f32 {
 
         match self {
-            WeaponDirections::Up => 90.,
-            WeaponDirections::ForwardUp => 45.,
-            WeaponDirections::Forward => 0.,
-            WeaponDirections::ForwardDown => -45.,
-            WeaponDirections::Down => -90.,
+            WeaponDirections::Forward       => 0.,
+            WeaponDirections::ForwardUp     => 45.,
+            WeaponDirections::Up            => 90.,
+            WeaponDirections::BackwardUp    => 135.,
+            WeaponDirections::Backward      => 180.,
+            WeaponDirections::BackwardDown  => 225.,
+            WeaponDirections::Down          => 270.,
+            WeaponDirections::ForwardDown   => 315.,
         }
     }
 }
@@ -202,22 +211,6 @@ pub struct WeaponAttack {
     pub is_friendly: bool,
     pub gravity_scale: Option<f32>,
 }
-/*impl Default for WeaponAttack {
-    fn default() -> Self {
-        WeaponAttack {
-            to_spawn: ProjectileTemplate::create_melee(
-                1,
-                1.,
-                Vec2::ZERO,
-                1.,
-                1.,
-            ),
-            child_of_parent: false,
-            is_friendly: true,
-            gravity_scale: None,
-        }
-    }
-}*/
 
 pub struct ProjectileTemplate {
     pub damage: i32,
@@ -225,6 +218,8 @@ pub struct ProjectileTemplate {
     pub size: CollisionShape,
 
     pub initial_speed: Vec2,
+    //pub spin_projectile: bool,
+    pub initial_spin_angle: f32,
     pub spawn_offset: Vec2,
 
     pub rigid_body: RigidBody,
@@ -233,7 +228,8 @@ pub struct ProjectileTemplate {
 impl ProjectileTemplate {
     pub fn create_range(
         damage: i32, expire: f32, spawn_offset: Vec2, 
-        size: f32, initial_speed: Vec2,
+        width: f32, height: f32, 
+        initial_speed: Vec2, initial_spin_angle: f32,
         rigid_body: RigidBody,
         animation_bundle: SimpleAnimationBundle,
 
@@ -242,8 +238,12 @@ impl ProjectileTemplate {
         ProjectileTemplate {
             damage,
             expire,
-            size: CollisionShape::Sphere{radius: size},
+            size: CollisionShape::Cuboid{
+                half_extends: Vec3::new(width, height, 0.) / 2.,
+                border_radius: None,
+            },
             initial_speed,
+            initial_spin_angle,
             spawn_offset,
             rigid_body,
             animation_bundle,
@@ -263,8 +263,9 @@ impl ProjectileTemplate {
                 border_radius: None,
             },
             initial_speed: Vec2::ZERO,
+            initial_spin_angle: 0.,
             spawn_offset,
-            rigid_body: RigidBody::Sensor,
+            rigid_body: RigidBody::Dynamic,
             animation_bundle,
         }
     }
@@ -292,25 +293,37 @@ impl ProjectileAttackBundle {
     pub fn new(parent: Entity, base: &ProjectileTemplate, dir: &WeaponDirection, is_friendly: bool) -> ProjectileAttackBundle {
 
         let rotation_angle = dir.direction.get_angle().to_radians();
+        let full_rotation = 360_f32.to_radians();
         
-        let mut projectile_velocity = rotate_vector(base.initial_speed, rotation_angle);
-        let mut projectile_offset = rotate_vector(base.spawn_offset, rotation_angle);
+        let projectile_velocity = rotate_vector(base.initial_speed, rotation_angle);
+        let projectile_offset = rotate_vector(base.spawn_offset, rotation_angle);
+        //let projectile_offset = base.spawn_offset;
 
-        if !dir.right_facing {
-            projectile_velocity.x *= -1.; 
-            projectile_offset.x *= -1.;
-        }
-        
+        let right_facing: f32 = if dir.right_facing {
+            1.
+        } else {
+            -1.
+        };
+
+        let spin_speed = (base.initial_spin_angle * -right_facing).to_radians();
+        let axis_angle = AxisAngle::new(Vec3::Z, spin_speed);
 
         let mut animation_copy = base.animation_bundle.clone();
         animation_copy.sprite_sheet.transform = Transform::from_translation(projectile_offset.extend(40.));
+        //animation_copy.flip_animation(!dir.right_facing);
+        //animation_copy.flip_x(!dir.right_facing);
+        animation_copy.flip_y(!dir.right_facing);
+
+        animation_copy.sprite_sheet.transform.rotation = Quat::from_rotation_x(full_rotation - rotation_angle);
+        
 
 
         ProjectileAttackBundle {
             projectile: Projectile(parent),
             damage: ProjectileDamage(base.damage),
             expire: ProjectileExpire::new(base.expire),
-            velocity: Velocity::from_linear(projectile_velocity.extend(0.)),
+            velocity: Velocity::from_linear(projectile_velocity.extend(0.))
+                .with_angular(axis_angle),
             collision: ColliderBundle::projectile(base.size.clone(), base.rigid_body, is_friendly),
             animation_bundle: animation_copy,
         }

@@ -441,6 +441,32 @@ fn camera_follow_player(
 
 //============================================================================
 
+#[derive(Component, Default, Clone)]
+pub struct ParticleTrail {
+    id: i32,
+}
+
+#[derive(Bundle, Default, Clone)]
+pub struct ParticleTrailBundle {
+
+}
+impl LdtkEntity for ParticleTrailBundle {
+    fn bundle_entity(
+        entity_instance: &EntityInstance,
+        layer_instance: &LayerInstance,
+        _: Option<&Handle<Image>>,
+        _: Option<&TilesetDefinition>,
+        assets: &AssetServer,
+        texture_atlases: &mut Assets<TextureAtlas>,
+    ) -> Self {
+
+        return ParticleTrailBundle {};
+
+    }
+}
+
+//============================================================================
+
 pub struct ArenaPlugin;
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
@@ -453,6 +479,8 @@ impl Plugin for ArenaPlugin {
 
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 1)
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 3)
+
+            .register_ldtk_entity::<ParticleTrailBundle>("ParticleTrail")
 
             .add_system(spawn_wall_collision)
             .add_system(change_level)

@@ -42,27 +42,55 @@ impl ColliderBundle {
             collision_layer: CollisionLayers::new(
                 CollisionLayer::Player, 
                 CollisionLayer::Tile)
-                .with_group(CollisionLayer::Entity),
+                .with_group(CollisionLayer::Entity)
+                .with_mask(CollisionLayer::Enemy),
             ..Default::default()
         }
     }
+
+    pub fn non_player(width: f32, height: f32) -> Self {
+        Self {
+            collider: CollisionShape::Cuboid {
+                half_extends: Vec3::new(width, height, 0.) / 2.,
+                border_radius: None,
+            },
+            rigid_body: RigidBody::Dynamic,
+            rotation_constraints: RotationConstraints::lock(),
+            physic_material: PhysicMaterial {
+                restitution: 0.5,
+                density: 0.2,
+                friction: 0.,
+            },
+            collision_layer: CollisionLayers::none()
+                .with_group(CollisionLayer::Enemy)
+                .with_group(CollisionLayer::Entity)
+                
+                .with_mask(CollisionLayer::Tile)
+                .with_mask(CollisionLayer::Weapon)
+                .with_mask(CollisionLayer::Player),
+            ..Default::default()
+        }
+    }
+
     pub fn projectile(collider: CollisionShape, rigid_body: RigidBody, is_friendly: bool) -> Self {
 
         let mut collision_layer = CollisionLayers::new(
             CollisionLayer::Weapon,
             CollisionLayer::Tile,
-        );
+        );//.with_mask(CollisionLayer::Entity);
         if is_friendly {
-            collision_layer = collision_layer.with_group(CollisionLayer::Player);
+            //collision_layer = collision_layer.with_group(CollisionLayer::Player);
+            collision_layer = collision_layer.with_mask(CollisionLayer::Enemy);
         } else {
-            collision_layer = collision_layer.with_group(CollisionLayer::Enemy);
+            //collision_layer = collision_layer.with_group(CollisionLayer::Enemy);
+            collision_layer = collision_layer.with_mask(CollisionLayer::Player);
         }
 
 
         Self {
             collider,
             rigid_body,
-            rotation_constraints: RotationConstraints::restrict_to_x_only(),
+            rotation_constraints: RotationConstraints::restrict_to_z_only(),
             physic_material: PhysicMaterial {
                 restitution: 0.,
                 density: 0.1,
@@ -93,6 +121,10 @@ pub struct Accel {
 pub struct MoveDir(pub f32);
 
 #[derive(Component, Clone, Default)]
+pub struct FullMoveDir(pub Vec2);
+
+
+#[derive(Component, Clone)]
 pub struct CanJump {
     pub jump_pressed: bool,
     pub jump_repressed: bool,
@@ -105,6 +137,36 @@ pub struct CanJump {
 
     pub jumps_left: u32,
     pub total_jumps: u32,
+}
+impl Default for CanJump {
+    fn default() -> Self {
+        CanJump {
+            jump_pressed:       false,
+            jump_repressed:     false,
+            jumping:            false,
+            jump_timer:         Timer::from_seconds(0.5, false),
+
+            max_jump_force:     500.,
+            jump_force:         600.,
+            initial_jump_force: 130.,
+
+            jumps_left:         1,
+            total_jumps:        1,
+        }
+    }
+}
+impl CanJump {
+    pub fn new(
+        jump_time: f32, jump_force: f32, initial_jump_force: f32
+    ) -> Self {
+        CanJump {
+            jump_timer: Timer::from_seconds(jump_time, false),
+            max_jump_force: jump_force,
+            jump_force,
+            initial_jump_force,
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Bundle, Clone, Default)]
@@ -138,7 +200,12 @@ pub struct IsOnWall {
 
 //===============================================================
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct SetGravityScale(pub f32);
+impl Default for SetGravityScale {
+    fn default() -> Self {
+        SetGravityScale(1.)
+    }
+}
 
 //===============================================================
