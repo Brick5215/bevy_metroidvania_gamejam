@@ -36,7 +36,7 @@ pub const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::A;
 
 //===============================================================
 
-pub const PLAYER_MAX_HEALTH:        i32 = 50;
+pub const PLAYER_MAX_HEALTH:        i32 = 200;
 
 pub const PLAYER_MAX_SPEED:         f32 = 120.;
 pub const PLAYER_MAX_FALL_SPEED:    f32 = 400.;

@@ -41,7 +41,7 @@ impl Health {
         }
     }
 
-    pub fn _get_health(&self) -> i32 {
+    pub fn get_health(&self) -> i32 {
         return self.current_health;
     }
     pub fn _get_max_health(&self) -> i32 {
@@ -114,6 +114,6 @@ impl HealthFlash {
 
 //================================================================
 
-pub struct EntityDiedEvent;
+pub struct EntityDiedEvent(pub Entity);
 
 //================================================================

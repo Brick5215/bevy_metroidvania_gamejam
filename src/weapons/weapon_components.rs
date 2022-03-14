@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use crate::{
     general::tools::rotate_vector,
-    physics::physics_components::ColliderBundle, animation::animation_components::SimpleAnimationBundle
+    physics::physics_components::{ColliderBundle, SetGravityScale}, animation::animation_components::SimpleAnimationBundle
 };
 
 //================================================================================
@@ -209,7 +209,7 @@ pub struct WeaponAttack {
     pub to_spawn: ProjectileTemplate,
     pub child_of_parent: bool,
     pub is_friendly: bool,
-    pub gravity_scale: Option<f32>,
+    pub gravity_scale: Option<SetGravityScale>,
 }
 
 pub struct ProjectileTemplate {

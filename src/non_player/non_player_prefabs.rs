@@ -29,7 +29,7 @@ pub struct FoxBundle {
 
 impl LdtkEntity for FoxBundle {
     fn bundle_entity(
-        entity_instance: &EntityInstance,
+        _: &EntityInstance,
         layer_instance: &LayerInstance,
         _: Option<&Handle<Image>>,
         _: Option<&TilesetDefinition>,
@@ -83,7 +83,7 @@ impl LdtkEntity for FoxBundle {
                     ..Default::default()
                 },
             },
-            health: Health::new(FOX_MAX_HEALTH, 0.),
+            health: Health::new(FOX_MAX_HEALTH, 0.1),
             state: NonPlayerPassiveState::default(),
         }
     }
@@ -102,7 +102,7 @@ pub struct BatBundle {
 }
 impl LdtkEntity for BatBundle {
     fn bundle_entity(
-        entity_instance: &EntityInstance,
+        _: &EntityInstance,
         layer_instance: &LayerInstance,
         _: Option<&Handle<Image>>,
         _: Option<&TilesetDefinition>,
@@ -110,9 +110,9 @@ impl LdtkEntity for BatBundle {
         texture_atlases: &mut Assets<TextureAtlas>,
     ) -> Self {
 
-        const BAT_MAX_HEALTH:   i32 = 50;
+        const BAT_MAX_HEALTH:   i32 = 25;
 
-        const BAT_MAX_SPEED:    f32 = 100.;
+        const BAT_MAX_SPEED:    f32 = 70.;
         const BAT_ACCELERATION: f32 = 500.;
 
         const BAT_ATTACK_RANGE: f32 = 165.;//260.;
@@ -171,9 +171,12 @@ impl LdtkEntity for BatBundle {
                     air_deaccel:    None,
                 },
                 velocity: Velocity::default(),
-                gravity: SetGravityScale(0.),
+                gravity: SetGravityScale {
+                    scale: 0.,
+                    reset_velocity: false,
+                },
             },
-            health:         Health::new(BAT_MAX_HEALTH, 0.),
+            health:         Health::new(BAT_MAX_HEALTH, 0.1),
             state:          NonPlayerAggressiveState::default(),
             player_attack:  NonPlayerAttackPlayer {
                 attack_range: BAT_ATTACK_RANGE,

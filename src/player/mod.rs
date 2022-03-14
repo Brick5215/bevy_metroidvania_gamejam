@@ -14,21 +14,23 @@ impl Plugin for PlayerPlugin {
         app
             .register_ldtk_entity::<player_components::PlayerBundle>("Player")
 
-            .add_system(player_systems::player_move)
+            .add_system(player_systems::player_move.label("PlayerMoveInput"))
             .add_system(player_systems::player_sprint)
 
             .add_system(player_systems::player_jump)
 
-            .add_system(player_systems::player_wall_cling)
+            .add_system(player_systems::player_wall_cling.before("PlayerMoveInput"))
             .add_system(player_systems::player_cling_cooldown)
             .add_system(player_systems::player_wall_fling)
-
-            .add_system(player_systems::equip_player_weapon)
             
             .add_system(player_systems::player_attack)
             .add_system(player_systems::player_weapon_aim)
 
-            .add_system(player_systems::player_damage)
+            //Debug systems
+            .add_system(player_systems::equip_player_weapon)
+            //.add_system(player_systems::player_damage)
+            .add_system(player_systems::player_on_which_ground)
+            //.add_system(player_systems::print_collisions)
 
 
         ;

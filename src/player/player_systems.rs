@@ -11,7 +11,7 @@ use crate::{
     }, 
     physics::physics_components::{
          MaxVelocity, 
-        MoveDir, CanJump, IsGrounded, IsOnWall
+        MoveDir, CanJump, IsGrounded, IsOnWall, SetGravityScale
     }, 
     weapons::weapon_components::{
         WeaponState, WeaponBundle, WeaponInventory,
@@ -67,8 +67,11 @@ pub fn player_jump(
     let jump_just_pressed = key_input.just_pressed(PLAYER_JUMP);
 
     for mut can_jump in query.iter_mut() {
+
+
         can_jump.jump_pressed = jump_pressed;
         can_jump.jump_repressed = jump_just_pressed;
+
     }
 }
 
@@ -81,7 +84,6 @@ pub fn player_cling_cooldown(
     for mut cling in cling_query.iter_mut() {
         cling.cling_cooldown.tick(time.delta());
     }
-    
 }
 
 pub fn player_wall_cling(
@@ -94,6 +96,7 @@ pub fn player_wall_cling(
 
     for (entity, on_wall, grounded, mut player_cling, velocity, auto_animation) in player_query.iter_mut() {
 
+        //This entity is not allowed to cling to walls
         if !player_cling.can_cling {
             continue;
         }
@@ -104,7 +107,16 @@ pub fn player_wall_cling(
                     //Start clinging here
 
                     player_cling.clinging = true;
-                    commands.entity(entity).insert(RigidBody::KinematicPositionBased);
+                    //*rigid_body = RigidBody::Sensor;
+
+                    commands.entity(entity).insert(SetGravityScale {
+                        scale: 0.,
+                        reset_velocity: true,
+                    });
+                    if let Some(mut velocity) = velocity {
+                        velocity.linear = Vec3::ZERO;
+                    }
+
                     if let Some(mut anim) = auto_animation {
                         anim.disabled = true;
                     }
@@ -118,6 +130,11 @@ pub fn player_wall_cling(
                     )
                 }
             }
+            else {
+                if let Some(mut velocity) = velocity {
+                    velocity.linear = Vec3::ZERO;
+                }
+            }
         }
         else {
             if player_cling.clinging {
@@ -125,10 +142,12 @@ pub fn player_wall_cling(
                 
                 //Climb button is released
                 if on_wall.on_wall && !grounded.grounded {
-                    
+                    //If charging a fling, skip over rest of code
                     if player_cling.flinging {
                         continue
                     }
+                    //Start the fling here.
+                    //Get player input and set animation.
                     else {
 
                         let mut dir = Vec2::ZERO;
@@ -159,10 +178,13 @@ pub fn player_wall_cling(
                 }
 
                 //Clinger touched the ground or lost contact with wall
-
                 player_cling.clinging = false;
                 player_cling.flinging = false;
-                commands.entity(entity).insert(RigidBody::Dynamic);
+                //*rigid_body = RigidBody::Dynamic;
+                commands.entity(entity).insert(SetGravityScale {
+                    scale: 1.,
+                    reset_velocity: false,
+                });
                 player_cling.cling_cooldown.reset();
 
                 if let Some(mut velocity) = velocity {
@@ -172,13 +194,14 @@ pub fn player_wall_cling(
                     anim.disabled = false;
                 }
 
+                println!("Slipped off");
             }
         }
     }
 }
 
 pub fn player_wall_fling(
-    mut player_query: Query<(&IsOnWall,&mut PlayerWallCling, &mut Velocity, Option<&mut AutoAnimation>), With<Player> >,
+    mut player_query: Query<(Entity, &IsOnWall, &mut PlayerWallCling, &mut Velocity, Option<&mut AutoAnimation>), With<Player> >,
     mut wall_fling_end_event: EventReader<AnimationFinishedEvent>,
     mut commands: Commands,
 ) {
@@ -189,6 +212,7 @@ pub fn player_wall_fling(
         if anim_end.animation_type != target_animation { continue }
 
         if let Ok((
+            entity,
             on_wall, 
             mut player_cling, 
             mut velocity, 
@@ -199,7 +223,11 @@ pub fn player_wall_fling(
 
                 player_cling.clinging = false;
                 player_cling.flinging = false;
-                commands.entity(anim_end.entity).insert(RigidBody::Dynamic);
+                //*rigid_body = RigidBody::Dynamic;
+                commands.entity(entity).insert(SetGravityScale {
+                    scale: 1.,
+                    reset_velocity: false,
+                });
                 player_cling.cling_cooldown.reset();
 
                 velocity.linear = player_cling.fling_dir.extend(0.) * player_cling.fling_speed;
@@ -207,6 +235,9 @@ pub fn player_wall_fling(
                 if let Some(mut auto) = auto_anim {
                     auto.disabled = false;
                 }
+            }
+            else {
+                println!("Something WENT VERY WRONG IN THE FLING THING!?!?!?!??!!!");
             }
         }
     }
@@ -347,11 +378,35 @@ pub fn player_damage(
                 entity: player,
                 change_type: HealthChangeType::Add{value: -10},
             })
-
         }
+    }
+}
+
+//===============================================================
+
+
+pub fn player_on_which_ground(
+    query: Query<&IsGrounded, With<Player>>,
+    key_input: Res<Input<KeyCode>>,
+) {
+
+    if !key_input.just_pressed(KeyCode::M) {
+        return;
+    }
+
+    for player in query.iter() {
+
+        println!("Currently on: {:?}. You are grounded = {}", player.walls_below, player.grounded);
 
     }
 
 }
 
-//===============================================================
+
+pub fn print_collisions(
+    mut collision_event: EventReader<CollisionEvent>,
+) {
+    for event in collision_event.iter() {
+        println!("A collision Happened");
+    }
+}

@@ -15,7 +15,7 @@ impl Plugin for NonPlayerPlugin {
 
         app
 
-            .register_ldtk_entity::<non_player_prefabs::FoxBundle>("Fox")
+            //.register_ldtk_entity::<non_player_prefabs::FoxBundle>("Fox")
             .register_ldtk_entity::<non_player_prefabs::BatBundle>("Bat")
 
             .add_system(non_player_systems::enemy_target_player)

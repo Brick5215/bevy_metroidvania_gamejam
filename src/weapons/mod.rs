@@ -19,7 +19,6 @@ impl Plugin for WeaponPlugin {
             .add_system(weapon_systems::weapon_state_change)
             .add_system(weapon_systems::fire_weapon)
 
-            .add_system(weapon_systems::projectile_travel)
             .add_system(weapon_systems::projectile_expire)
 
             .add_system(weapon_systems::projectile_collision)

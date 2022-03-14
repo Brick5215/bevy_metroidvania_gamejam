@@ -42,7 +42,6 @@ impl ColliderBundle {
             collision_layer: CollisionLayers::new(
                 CollisionLayer::Player, 
                 CollisionLayer::Tile)
-                .with_group(CollisionLayer::Entity)
                 .with_mask(CollisionLayer::Enemy),
             ..Default::default()
         }
@@ -201,10 +200,24 @@ pub struct IsOnWall {
 //===============================================================
 
 #[derive(Component, Clone)]
-pub struct SetGravityScale(pub f32);
+pub struct SetGravityScale {
+    pub scale: f32,
+    pub reset_velocity: bool,
+}
 impl Default for SetGravityScale {
     fn default() -> Self {
-        SetGravityScale(1.)
+        SetGravityScale {
+            scale: 1.,
+            reset_velocity: false,
+        }
+    }
+}
+impl SetGravityScale {
+    pub fn reset_velocity(scale: f32) -> SetGravityScale {
+        SetGravityScale {
+            scale,
+            reset_velocity: false,
+        }
     }
 }
 

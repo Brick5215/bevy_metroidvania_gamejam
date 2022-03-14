@@ -69,9 +69,11 @@ fn main() {
         //-------------------------------------------------
 
         .add_event::<general::general_components::HealthChangeEvent>()
+        .add_event::<general::general_components::EntityDiedEvent>()
         .add_system(general::general_systems::change_health)
         .add_system(general::general_systems::health_flash)
         .add_system(general::general_systems::do_iframes)
+        .add_system(general::general_systems::resolve_entity_death)
 
         //-------------------------------------------------
 

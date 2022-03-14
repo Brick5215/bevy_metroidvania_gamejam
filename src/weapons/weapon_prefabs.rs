@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use heron::RigidBody;
 
-use crate::{animation::animation_components::{SimpleAnimationBundle, AnimationType}, general::tools::load_texture_atlas};
+use crate::{animation::animation_components::{SimpleAnimationBundle, AnimationType}, general::tools::load_texture_atlas, physics::physics_components::SetGravityScale};
 
 use super::weapon_components::*;
 
@@ -42,7 +42,7 @@ impl WeaponBundle {
                 ),
                 child_of_parent: true,
                 is_friendly,
-                gravity_scale: None,
+                gravity_scale: Some(SetGravityScale::reset_velocity(0.)),
             },
             state: WeaponState::default(),
             direction: WeaponDirection::default(),
@@ -84,7 +84,10 @@ impl WeaponBundle {
                 ),
                 child_of_parent: false,
                 is_friendly,
-                gravity_scale: Some(0.8),
+                gravity_scale: Some(SetGravityScale {
+                    scale: 0.8,
+                    ..Default::default()
+                }),
             },
             state: WeaponState::default(),
             direction: WeaponDirection::default(),

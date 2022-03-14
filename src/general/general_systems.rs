@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
+use crate::player::player_components::Player;
+
 use super::{tools, general_components::*};
 
 //================================================================
@@ -71,6 +73,7 @@ pub fn fade_in_out(
 pub fn change_health(
     mut health_query: Query<(Entity, &mut Health)>,
     mut health_event: EventReader<HealthChangeEvent>,
+    mut died_event: EventWriter<EntityDiedEvent>,
     mut commands: Commands,
 ) {
     for event in health_event.iter() {
@@ -91,6 +94,9 @@ pub fn change_health(
 
                     health.add_health(value);
                 },
+            }
+            if health.get_health() <= 0 {
+                died_event.send(EntityDiedEvent(entity));
             }
         }
     }
@@ -145,6 +151,23 @@ pub fn health_flash(
                 flash.change_timer.reset();
             }
         }
+    }
+}
+
+
+pub fn resolve_entity_death(
+    player_query: Query<Entity, With<Player>>,
+    mut died_event: EventReader<EntityDiedEvent>,
+    mut commands: Commands,
+) {
+
+    for event in died_event.iter() {
+
+        if let Ok(_) = player_query.get(event.0) {
+            println!("Player died");
+        }
+
+        commands.entity(event.0).despawn();
     }
 }
 
