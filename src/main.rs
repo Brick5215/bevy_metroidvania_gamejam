@@ -4,6 +4,7 @@ use bevy::{prelude::*, render::render_resource::TextureUsages};
 use bevy_ecs_ldtk::prelude::*;
 use heron::prelude::*;
 use bevy_prototype_lyon::prelude::*;
+use bevy_egui::{egui, EguiContext, EguiPlugin};
 
 //===============================================================
 
@@ -33,6 +34,7 @@ fn main() {
         .add_plugin(PhysicsPlugin::default())
         .add_plugin(LdtkPlugin)
         .add_plugin(ShapePlugin)
+        .add_plugin(EguiPlugin)
 
         //Add Own plugins
         .add_plugin(animation::AnimationPlugin)

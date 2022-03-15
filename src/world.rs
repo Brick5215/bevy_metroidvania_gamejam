@@ -8,7 +8,7 @@ use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
     player::player_components::{Player, PLAYER_PICKUP_DISTANCE, PLAYER_INTERACT, PlayerSprint, PlayerWallCling}, 
-    general::general_components::{FadeInOut, GameCamera}, physics::physics_components::CollisionLayer, weapons::weapon_components::{WeaponInventory, WeaponBundle}
+    general::general_components::{FadeInOut, GameCamera}, physics::physics_components::CollisionLayer, weapons::weapon_components::{WeaponInventory, WeaponBundle}, ui::{Popups, ShowPopup, ShowCoinCounter, CoinsCollected}
 };
 
 //============================================================================
@@ -564,6 +564,9 @@ pub fn player_pickup_item(
     mut pickup_query: Query<(&GlobalTransform, &PlayerPickupType, &mut PickupCollected, &mut Visibility), Without<Player>>,
     mut pickup_event: EventWriter<ItemPickedUpEvent>,
     key_input: Res<Input<KeyCode>>,
+
+    mut popup: ResMut<Popups>,
+    mut popup_state: ResMut<State<ShowPopup>>,
 ) {
 
     for player_pos in player_query.iter() {
@@ -573,6 +576,9 @@ pub fn player_pickup_item(
             }
 
             let distance_to_item = player_pos.translation.distance(pickup_pos.translation);
+            if distance_to_item == 0. {
+                continue;
+            }
             if distance_to_item < PLAYER_PICKUP_DISTANCE {
 
                 if key_input.just_pressed(PLAYER_INTERACT) {
@@ -580,6 +586,39 @@ pub fn player_pickup_item(
                     collected.0 = true;
                     visible.is_visible = false;
 
+                }
+
+                match pickup_type {
+                    PlayerPickupType::Coin => {
+                        *popup = Popups::Coin; 
+                        if *popup_state.current() != ShowPopup::Show{
+                            popup_state.set(ShowPopup::Show).unwrap();
+                        }   
+                    },
+                    PlayerPickupType::Gem => {
+                        *popup = Popups::Gem; 
+                        if *popup_state.current() != ShowPopup::Show{
+                            popup_state.set(ShowPopup::Show).unwrap();
+                        }   
+                    },
+                    PlayerPickupType::Boots => {
+                        *popup = Popups::Boots; 
+                        if *popup_state.current() != ShowPopup::Show{
+                            popup_state.set(ShowPopup::Show).unwrap();
+                        }   
+                    },
+                    PlayerPickupType::Axe => {
+                        *popup = Popups::Axe; 
+                        if *popup_state.current() != ShowPopup::Show{
+                            popup_state.set(ShowPopup::Show).unwrap();
+                        }   
+                    },
+                    PlayerPickupType::Knife => {
+                        *popup = Popups::Knives; 
+                        if *popup_state.current() != ShowPopup::Show{
+                            popup_state.set(ShowPopup::Show).unwrap();
+                        }   
+                    },
                 }
             }
         }
@@ -594,12 +633,16 @@ pub fn player_enable_item(
     mut commands: Commands,
     assets: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+
+    mut coins: ResMut<CoinsCollected>
 ) {
 
     for event in pickup_event.iter() {
 
         match event.0 {
-            PlayerPickupType::Coin=> {},
+            PlayerPickupType::Coin => {
+                coins.0 += 1;
+            },
             PlayerPickupType::Gem => {
 
             },
@@ -636,6 +679,63 @@ pub fn player_enable_item(
 
 //============================================================================
 
+#[derive(Component, Default)]
+pub struct EndScreenTrigger;
+
+#[derive(Bundle, Default)]
+pub struct EndScreenAreaBundle {
+    global_transform: GlobalTransform,
+    transform:  Transform,
+    trigger: EndScreenTrigger,
+}
+impl LdtkEntity for EndScreenAreaBundle {
+    fn bundle_entity(
+        entity_instance: &EntityInstance,
+        layer_instance: &LayerInstance,
+        _: Option<&Handle<Image>>,
+        _: Option<&TilesetDefinition>,
+        assets: &AssetServer,
+        _: &mut Assets<TextureAtlas>,
+    ) -> Self { 
+
+        EndScreenAreaBundle {
+            ..Default::default()
+        }
+    }
+}
+
+
+fn player_trigger_end_screen(
+    player_query: Query<&GlobalTransform, With<Player>>,
+    end_trigger_query: Query<&GlobalTransform, (With<EndScreenTrigger>, Without<Player>)>,
+
+    mut popup: ResMut<Popups>,
+    mut popup_state: ResMut<State<ShowPopup>>,
+
+    mut show_coin_state: ResMut<State<ShowCoinCounter>>,
+) {
+
+    for player_pos in player_query.iter() {
+        for end_pos in end_trigger_query.iter() {
+
+            let distance_to_item = player_pos.translation.distance(end_pos.translation);
+
+
+            if distance_to_item < 200. && distance_to_item != 0. {
+                *popup = Popups::End; 
+                if *popup_state.current() != ShowPopup::Show{
+                    popup_state.set(ShowPopup::Show).unwrap();
+                }  
+                if *show_coin_state.current() != ShowCoinCounter::Show{
+                    show_coin_state.set(ShowCoinCounter::Show).unwrap();
+                }  
+            }
+        }
+    }
+} 
+
+//============================================================================
+
 pub struct WorldPlugin;
 impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
@@ -648,6 +748,7 @@ impl Plugin for WorldPlugin {
 
             
             .register_ldtk_entity::<PlayerPickupBundle>("ItemPickup")
+            .register_ldtk_entity::<EndScreenAreaBundle>("Ending")
 
             .register_ldtk_entity::<ParticleTrailBundle>("ParticleTrail")
 
@@ -659,6 +760,7 @@ impl Plugin for WorldPlugin {
             .add_event::<ItemPickedUpEvent>()
             .add_system(player_pickup_item)
             .add_system(player_enable_item)
+            .add_system(player_trigger_end_screen)
         ;
     }
 }
