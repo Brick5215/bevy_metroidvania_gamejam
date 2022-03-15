@@ -6,6 +6,11 @@ use bevy::prelude::*;
 //================================================================
 
 #[derive(Component)]
+pub struct GameCamera;
+
+//================================================================
+
+#[derive(Component)]
 pub struct FadeInOut {
     pub timer: Timer,
     pub from: f32,
@@ -44,7 +49,7 @@ impl Health {
     pub fn get_health(&self) -> i32 {
         return self.current_health;
     }
-    pub fn _get_max_health(&self) -> i32 {
+    pub fn get_max_health(&self) -> i32 {
         return self.max_health;
     }
     pub fn add_health(&mut self, to_add: i32) {
@@ -52,6 +57,8 @@ impl Health {
             return;
         }
         self.current_health = (self.current_health + to_add).min(self.max_health);
+
+        //println!("Health lost. Now: {}", self.current_health);
 
         if to_add < 0 {
             self.invincible = true;

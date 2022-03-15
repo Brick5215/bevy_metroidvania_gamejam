@@ -8,7 +8,7 @@ use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
     player::player_components::Player, 
-    general::general_components::FadeInOut, physics::physics_components::CollisionLayer
+    general::general_components::{FadeInOut, GameCamera}, physics::physics_components::CollisionLayer
 };
 
 //============================================================================
@@ -379,7 +379,7 @@ const MAX_CAMERA_HEIGHT: f32 = ASPECT_RATIO_HEIGHT  * 35.;
 
 fn camera_follow_player(
     player_query: Query<&Transform, With<Player>>,
-    mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), Without<Player>>,
+    mut camera_query: Query<(&mut OrthographicProjection, &mut Transform), (Without<Player>, With<GameCamera>)>,
     level_query: Query<(&Transform, &Handle<LdtkLevel>), (Without<OrthographicProjection>, Without<Player>)>,
     current_level: Res<LevelSelection>,
     ldtk_levels: Res<Assets<LdtkLevel>>,
@@ -473,9 +473,6 @@ impl Plugin for ArenaPlugin {
         app
             .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
             .add_event::<LevelChangedEvent>()
-            
-            //.register_ldtk_int_cell::<WallBundle>(1)
-            //.register_ldtk_int_cell::<WallBundle>(3)
 
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 1)
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 3)

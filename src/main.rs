@@ -12,6 +12,7 @@ mod physics;
 mod animation;
 mod player;
 mod non_player;
+mod ui;
 
 mod general;
 
@@ -40,6 +41,7 @@ fn main() {
         .add_plugin(weapons::WeaponPlugin)
         .add_plugin(arena::ArenaPlugin)
         .add_plugin(non_player::NonPlayerPlugin)
+        .add_plugin(ui::UiPlugin)
 
         //-------------------------------------------------
 

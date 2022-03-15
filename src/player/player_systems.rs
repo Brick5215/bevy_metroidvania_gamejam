@@ -321,7 +321,7 @@ pub fn player_attack(
 }
 
 
-pub fn equip_player_weapon(
+pub fn _equip_player_weapon(
     mut player_query: Query<(&mut WeaponInventory, Entity), With<Player>>,
     key_input: Res<Input<KeyCode>>,
     mut commands: Commands,
@@ -365,7 +365,7 @@ pub fn equip_player_weapon(
 
 //===============================================================
 
-pub fn player_damage(
+pub fn _player_damage(
     mut event: EventWriter<HealthChangeEvent>,
     player: Query<Entity, With<Player>>,
     key_input: Res<Input<KeyCode>>,
@@ -385,7 +385,7 @@ pub fn player_damage(
 //===============================================================
 
 
-pub fn player_on_which_ground(
+pub fn _player_on_which_ground(
     query: Query<&IsGrounded, With<Player>>,
     key_input: Res<Input<KeyCode>>,
 ) {
@@ -393,20 +393,7 @@ pub fn player_on_which_ground(
     if !key_input.just_pressed(KeyCode::M) {
         return;
     }
-
     for player in query.iter() {
-
         println!("Currently on: {:?}. You are grounded = {}", player.walls_below, player.grounded);
-
-    }
-
-}
-
-
-pub fn print_collisions(
-    mut collision_event: EventReader<CollisionEvent>,
-) {
-    for event in collision_event.iter() {
-        println!("A collision Happened");
     }
 }

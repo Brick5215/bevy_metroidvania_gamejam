@@ -12,7 +12,8 @@ pub fn setup(
     mut commands: Commands,
     assets: Res<AssetServer>,
 ) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d())
+        .insert(GameCamera);
 
     //let ldtk_handle = assets.load("Tilemaps/TileMapMain.ldtk");
     let ldtk_handle = assets.load("Tilemaps/TileMapTheNew.ldtk");

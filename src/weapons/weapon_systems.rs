@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use heron::{Velocity, RigidBody, CollisionEvent, CollisionLayers};
-use crate::{physics::physics_components::{SetGravityScale, CollisionLayer}, general::general_components::{HealthChangeEvent, HealthChangeType}};
+use crate::{physics::physics_components::{CollisionLayer}, general::general_components::{HealthChangeEvent, HealthChangeType}};
 
 use super::weapon_components::*;
 
