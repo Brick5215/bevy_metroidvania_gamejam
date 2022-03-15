@@ -27,7 +27,7 @@ impl Plugin for PlayerPlugin {
             .add_system(player_systems::player_weapon_aim)
 
             //Debug systems
-            .add_system(player_systems::_equip_player_weapon)
+            //.add_system(player_systems::_equip_player_weapon)
             //.add_system(player_systems::_player_damage)
             //.add_system(player_systems::_player_on_which_ground)
 

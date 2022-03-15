@@ -7,7 +7,7 @@ use bevy_prototype_lyon::prelude::*;
 
 //===============================================================
 
-mod arena;
+mod world;
 mod physics;
 mod animation;
 mod player;
@@ -39,7 +39,7 @@ fn main() {
         .add_plugin(physics::CustomPhysicsPlugin)
         .add_plugin(player::PlayerPlugin)
         .add_plugin(weapons::WeaponPlugin)
-        .add_plugin(arena::ArenaPlugin)
+        .add_plugin(world::WorldPlugin)
         .add_plugin(non_player::NonPlayerPlugin)
         .add_plugin(ui::UiPlugin)
 

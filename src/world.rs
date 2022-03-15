@@ -7,8 +7,8 @@ use heron::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 
 use crate::{
-    player::player_components::Player, 
-    general::general_components::{FadeInOut, GameCamera}, physics::physics_components::CollisionLayer
+    player::player_components::{Player, PLAYER_PICKUP_DISTANCE, PLAYER_INTERACT, PlayerSprint, PlayerWallCling}, 
+    general::general_components::{FadeInOut, GameCamera}, physics::physics_components::CollisionLayer, weapons::weapon_components::{WeaponInventory, WeaponBundle}
 };
 
 //============================================================================
@@ -467,8 +467,177 @@ impl LdtkEntity for ParticleTrailBundle {
 
 //============================================================================
 
-pub struct ArenaPlugin;
-impl Plugin for ArenaPlugin {
+#[derive(Component, Clone, Debug)]
+pub enum PlayerPickupType {
+    Coin,
+    Gem,
+    Boots,
+    Axe,
+    Knife,
+}
+impl Default for PlayerPickupType {
+    fn default() -> Self {
+        PlayerPickupType::Coin
+    }
+}
+impl PlayerPickupType {
+    fn new(value: String) -> Self {
+        match value.as_str() {
+            "ClimbingAxe"   => { PlayerPickupType::Axe      }
+            "Knives"        => { PlayerPickupType::Knife    }
+            "Boots"         => { PlayerPickupType::Boots    }
+            "Gem"           => { PlayerPickupType::Gem      }
+            _               => { PlayerPickupType::Coin     }
+        }
+    }
+}
+
+#[derive(Component, Clone, Default)]
+pub struct PickupCollected(pub  bool);
+
+
+#[derive(Bundle, Default, Clone)]
+pub struct PlayerPickupBundle {
+    pickup_type: PlayerPickupType,
+    collected: PickupCollected,
+    #[bundle]
+    sprite: SpriteBundle,
+    worldly: Worldly,
+}
+impl LdtkEntity for PlayerPickupBundle {
+    fn bundle_entity(
+        entity_instance: &EntityInstance,
+        layer_instance: &LayerInstance,
+        _: Option<&Handle<Image>>,
+        _: Option<&TilesetDefinition>,
+        assets: &AssetServer,
+        _: &mut Assets<TextureAtlas>,
+    ) -> Self {
+
+        let mut item_type = "".to_string();
+        for instance in entity_instance.field_instances.iter() {
+            if instance.identifier == "ItemType" {
+                match instance.value.clone() {
+                    FieldValue::String( value) => {
+                        if let Some(value) = value {
+                            item_type = value;
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        }
+
+        let item_type = PlayerPickupType::new(item_type);
+        let sprite_location = match item_type {
+            PlayerPickupType::Coin  => {"Textures/Coin"},
+            PlayerPickupType::Gem   => {"Textures/Gem"},
+            PlayerPickupType::Boots => {"Textures/Boots"},
+            PlayerPickupType::Axe   => {"Textures/Axe"},
+            PlayerPickupType::Knife => {"Textures/Knife"},
+        };
+
+        //let sprite_handle = assets.load(sprite_location);
+
+        PlayerPickupBundle {
+            pickup_type: item_type,
+            sprite: SpriteBundle {
+                sprite: Sprite {
+                    color: Color::ORANGE_RED,
+                    custom_size: Some(Vec2::new(16., 16.)),
+                    ..Default::default()
+                },
+                //texture: sprite_handle,
+                ..Default::default()
+            },
+            worldly: Worldly::from_entity_info(entity_instance, layer_instance),
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ItemPickedUpEvent(pub PlayerPickupType);
+
+pub fn player_pickup_item(
+    player_query: Query<&GlobalTransform, With<Player>>,
+    mut pickup_query: Query<(&GlobalTransform, &PlayerPickupType, &mut PickupCollected, &mut Visibility), Without<Player>>,
+    mut pickup_event: EventWriter<ItemPickedUpEvent>,
+    key_input: Res<Input<KeyCode>>,
+) {
+
+    for player_pos in player_query.iter() {
+        for (pickup_pos, pickup_type, mut collected, mut visible) in pickup_query.iter_mut() {
+            if collected.0 {
+                continue;
+            }
+
+            let distance_to_item = player_pos.translation.distance(pickup_pos.translation);
+            if distance_to_item < PLAYER_PICKUP_DISTANCE {
+
+                if key_input.just_pressed(PLAYER_INTERACT) {
+                    pickup_event.send(ItemPickedUpEvent( pickup_type.clone()));
+                    collected.0 = true;
+                    visible.is_visible = false;
+
+                }
+            }
+        }
+    }
+}
+
+//============================================================================
+
+pub fn player_enable_item(
+    mut player_query: Query<(Entity, &mut PlayerSprint, &mut PlayerWallCling, &mut WeaponInventory), With<Player>>,
+    mut pickup_event: EventReader<ItemPickedUpEvent>,
+    mut commands: Commands,
+    assets: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
+
+    for event in pickup_event.iter() {
+
+        match event.0 {
+            PlayerPickupType::Coin=> {},
+            PlayerPickupType::Gem => {
+
+            },
+            PlayerPickupType::Boots => {
+                for (_, mut sprint, _, _) in player_query.iter_mut() { 
+                    sprint.can_sprint = true;
+                }
+            },
+            PlayerPickupType::Axe => {
+                for (_, _, mut wall_cling, _) in player_query.iter_mut() { 
+                    wall_cling.can_cling = true;
+                }
+            },
+            PlayerPickupType::Knife => {
+
+                for (player, _, _, mut inventory) in player_query.iter_mut() {
+
+                    let new_weapon = commands.spawn_bundle(WeaponBundle::create_throwing_knife(&assets, &mut texture_atlases, true)).id();
+            
+                    if inventory.add_slot1_weapon(new_weapon) {
+                        //Weapon added successfully
+                        commands.entity(player).add_child(new_weapon);
+                    }
+                    else {
+                        //Weapon was not added
+                        commands.entity(new_weapon).despawn();  
+                    }
+                }
+                
+            },
+        }
+    }
+}
+
+//============================================================================
+
+pub struct WorldPlugin;
+impl Plugin for WorldPlugin {
     fn build(&self, app: &mut App) {
         app
             .insert_resource(ClearColor(Color::rgb(0.1, 0.1, 0.1)))
@@ -477,12 +646,19 @@ impl Plugin for ArenaPlugin {
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 1)
             .register_ldtk_int_cell_for_layer::<WallBundle>("Tiles", 3)
 
+            
+            .register_ldtk_entity::<PlayerPickupBundle>("ItemPickup")
+
             .register_ldtk_entity::<ParticleTrailBundle>("ParticleTrail")
 
             .add_system(spawn_wall_collision)
             .add_system(change_level)
             .add_system(camera_follow_player)
             .add_system(set_fog_of_war)
+
+            .add_event::<ItemPickedUpEvent>()
+            .add_system(player_pickup_item)
+            .add_system(player_enable_item)
         ;
     }
 }

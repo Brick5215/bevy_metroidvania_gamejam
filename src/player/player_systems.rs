@@ -193,8 +193,6 @@ pub fn player_wall_cling(
                 if let Some(mut anim) = auto_animation {
                     anim.disabled = false;
                 }
-
-                println!("Slipped off");
             }
         }
     }
@@ -235,9 +233,6 @@ pub fn player_wall_fling(
                 if let Some(mut auto) = auto_anim {
                     auto.disabled = false;
                 }
-            }
-            else {
-                println!("Something WENT VERY WRONG IN THE FLING THING!?!?!?!??!!!");
             }
         }
     }

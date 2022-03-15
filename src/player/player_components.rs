@@ -34,6 +34,8 @@ pub const PLAYER_SPRINT:            KeyCode = KeyCode::Z;
 pub const PLAYER_PRIMARY_ATTACK:    KeyCode = KeyCode::C;
 pub const PLAYER_SECONDARY_ATTACK:  KeyCode = KeyCode::A;
 
+pub const PLAYER_INTERACT:          KeyCode = KeyCode::Z;
+
 //===============================================================
 
 pub const PLAYER_MAX_HEALTH:        i32 = 200;
@@ -52,6 +54,8 @@ pub const PLAYER_JUMP_TIME:         f32 = 0.3;
 
 pub const PLAYER_FLING_SPEED:       f32 = 300.;
 pub const PLAYER_FLING_COOLDOWN:    f32 = 0.5;
+
+pub const PLAYER_PICKUP_DISTANCE:   f32 = 40.;
 
 //===============================================================
 
@@ -73,9 +77,9 @@ pub struct PlayerWallCling {
     pub flinging: bool,
 }
 impl PlayerWallCling {
-    pub fn new(fling_speed: f32, cooldown: f32) -> Self {
+    pub fn new(fling_speed: f32, cooldown: f32, enabled: bool) -> Self {
         PlayerWallCling {
-            can_cling: true,
+            can_cling: enabled,
             clinging: false,
             fling_speed,
             cling_cooldown: Timer::from_seconds(cooldown, false),
@@ -262,12 +266,12 @@ impl LdtkEntity for PlayerBundle {
                 ..Default::default()
             },
             sprint: PlayerSprint{
-                can_sprint:         true,
+                can_sprint:         false,
                 sprint_speed:       PLAYER_MAX_SPRINT_SPEED,
                 normal_speed:       PLAYER_MAX_SPEED,
             },
             wall_bundle: PlayerWallBundle {
-                player_cling: PlayerWallCling::new(PLAYER_FLING_SPEED, PLAYER_FLING_COOLDOWN),
+                player_cling: PlayerWallCling::new(PLAYER_FLING_SPEED, PLAYER_FLING_COOLDOWN, false),
                 ..Default::default()
             },
             ..Default::default()
